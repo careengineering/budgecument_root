@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+<div class="container">
+
+{% for message in messages %}
+<div class="message {{message.tags}} text-center">
+    {{message}}
+</div>
+    {% endfor %}
+    <br>
+
+
+
+    <div class="text-center">
+        <h1>Index</h1>
+            <h3>Hello!</h3>
+            <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Aperiam aspernatur at dicta enim libero
+                maxime, modi necessitatibus officiis reiciendis repudiandae, vero voluptatibus. A, accusamus alias architecto at consectetur consequuntur distinctio dolorem excepturi id, ipsam maiores maxime minus neque nesciunt nostrum odit quam quidem, temporibus ut vitae. Consectetur ducimus fugiat ipsa nobis quae quia quis, rem sint soluta totam! A accusamus alias architecto asperiores blanditiis, consectetur dolorum eius eveniet ex hic impedit, in ipsa itaque magni maiores minima nesciunt obcaecati odit omnis perspiciatis placeat possimus, quam saepe sint tempore voluptas voluptatem! Aliquam consequatur corporis distinctio dolore doloribus eius optio qui sapiente.</p>
+        </div>
+</div>
+
+{% endblock %}

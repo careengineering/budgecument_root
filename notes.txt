@@ -1,0 +1,12 @@
+# fixtures içerisindeki dataları sql kaydetmek
+
+python manage.py loaddata fixtures/initial_data.json
+
+# mevcut kullanıcılar için accountholder oluşturmak
+
+from django.contrib.auth.models import User
+from apps.common.models import AccountHolder
+
+for user in User.objects.all():
+    if not hasattr(user, 'accountholder'):
+        AccountHolder.objects.create(user=user)

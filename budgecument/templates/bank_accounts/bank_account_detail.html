@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Budgecument - Hesap Detayı{% endblock %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container col-md-6 bg-light shadow-md p-3 form-layout">
+  <h3>{{ bank_account.name }} - Detaylar</h3>
+  <p><strong>Banka:</strong> {{ bank_account.bank.name }}</p>
+  <p><strong>Para Birimi:</strong> {{ bank_account.currency.code }}</p>
+  <p><strong>Mevcut Bakiye:</strong> {{ bank_account.current_balance }}</p>
+
+  <h4>İşlemler</h4>
+  <table class="table table-hover table-bordered">
+      <thead class="table-light">
+          <tr>
+              <th scope="col">#</th>
+              <th scope="col">Kaynak Hesap</th>
+              <th scope="col">Hedef Hesap</th>
+              <th scope="col">İşlem Türü</th>
+              <th scope="col">Tarih</th>
+              <th scope="col">Tutar</th>
+              <th scope="col">Açıklama</th>
+              <th scope="col">Detaylar</th>
+          </tr>
+      </thead>
+      <tbody>
+          {% for transaction in transactions %}
+          <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ transaction.source_account }}</td>
+              <td>{{ transaction.destination_account }}</td>
+              <td>{{ transaction.get_transaction_type_display }}</td>
+              <td>{{ transaction.date }}</td>
+              <td>{{ transaction.amount }}</td>
+              <td>{{ transaction.description }}</td>
+              <td>
+                  <a class="btn btn-primary btn-sm" href="{% url 'bank_transaction_detail' transaction_uid=transaction.uid %}">
+                      <i class="fa fa-eye" aria-hidden="true"></i></a>
+                  <a class="btn btn-success btn-sm" href="{% url 'bank_transaction_edit' transaction_uid=transaction.uid %}">
+                      <i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
+                  <a class="btn btn-danger btn-sm" href="{% url 'bank_transaction_delete' transaction_uid=transaction.uid %}">
+                      <i class="fa fa-trash" aria-hidden="true"></i></a>
+              </td>
+          </tr>
+          {% endfor %}
+      </tbody>
+  </table>
+
+  <a href="{% url 'bank_account_list' %}" class="btn btn-secondary w-40 btn-block p-2">Geri Dön &nbsp;
+    <i class="fa fa-arrow-circle-left" aria-hidden="true"></i></a>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Budgecument - Banka Hesapları {% endblock %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+<div class="container col-md-6 bg-light shadow-md p-3 form-layout">
+  <h3>{% if object %}Hesabı Düzenle{% else %}Yeni Hesap{% endif %}</h3>
+  <form method="post" autocomplete="off">
+    {% csrf_token %}
+    {{form.name|as_crispy_field}}
+    <br>
+    {{form.bank|as_crispy_field}}
+    <br>
+    {{form.currency|as_crispy_field}}
+    <br>
+    {{form.current_balance|as_crispy_field}}
+    <br>
+    <button type="submit" class="btn btn-success w-40 btn-block p-2">Kaydet &nbsp;
+      <i class="fa fa-floppy-o" aria-hidden="true"></i></button>
+    <a href="{% url 'bank_account_list' %}" class="btn btn-secondary w-40 btn-block p-2">Geri Dön &nbsp;
+      <i class="fa fa-arrow-circle-left" aria-hidden="true"></i></a>
+  </form>
+
+
+</div>
+{% endblock %}

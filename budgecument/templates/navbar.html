@@ -1,0 +1,96 @@
+<nav class="navbar navbar-expand-lg bg-body-tertiary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="http://127.0.0.1:8000/">Budgecument</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+
+        <!-- Ürünler -->
+        {% if user.is_authenticated %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Ürünler
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'bank_account_list' %}">Banka Hesapları</a></li>
+            <li><a class="dropdown-item" href="{% url 'bank_account_list' %}">Kredi Kartları</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#">Something else here</a></li>
+          </ul>
+        </li>
+        {% endif %}
+
+
+        <!-- İşlemler -->
+        {% if user.is_authenticated %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            İşlemler
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'bank_transaction_list' %}">Hesap İşlemler</a></li>
+            <li><a class="dropdown-item" href="{% url 'bank_account_list' %}">Harcama İşlemleri</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#">Something else here</a></li>
+          </ul>
+        </li>
+        {% endif %}
+
+
+
+
+
+
+        <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="{% url 'bank_account_list' %}">aaaa</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Link</a>
+        </li>
+
+
+        <li class="nav-item">
+          <a class="nav-link disabled" aria-disabled="true">Disabled</a>
+        </li>
+      </ul>
+      <form class="d-flex" role="search">
+        <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+        <button class="btn btn-outline-success" type="submit">Search</button>
+      </form>
+
+
+      <!-- Login / Register / Sign out -->
+        <ul class="navbar-nav mr-auto">
+          &nbsp;     &nbsp;     &nbsp;
+          {% if user.is_authenticated %}
+          <p class="nav-link active"> </p>
+              <li class="nav-item">
+                <a class="btn btn-outline-danger" href="{% url 'logout' %}">{{user.username}} Sign out &nbsp;
+                  <i class="fa fa-sign-out" aria-hidden="true"></i> </a>
+              </li>
+        </ul>
+
+        {% else %}
+          <li class="nav-item">
+            <a class="btn btn-outline-success" href="{% url 'login' %}">Login &nbsp;
+                <i class="fa fa-key" aria-hidden="true"></i></a>
+          </li>
+      &nbsp;
+
+          <li class="nav-item">
+            <a class="btn btn-outline-primary" href="{% url 'register' %}"> Register &nbsp;
+              <i class="fa fa-user" aria-hidden="true"></i></a>
+          </li>
+
+      {% endif %}
+
+
+
+      </div>
+
+    </div>
+
+</nav>

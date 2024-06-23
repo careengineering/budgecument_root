@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{{ credit_card.name }}</h2>
+<p>Banka: {{ credit_card.bank.name }}</p>
+<p>Para Birimi: {{ credit_card.currency.code }}</p>
+<p>Limit: {{ credit_card.limit }}</p>
+<p>Hesap Kesim Günü: {{ credit_card.cutoff_day }}</p>
+<p>Ödeme Günü: {{ credit_card.pay_day }}</p>
+{% endblock %}

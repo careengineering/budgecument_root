@@ -1,0 +1,18 @@
+[
+    {"model": "common.Currency", "pk": 1, "fields": {"code": "USD", "name": "Amerikan Doları", "symbol": "$"}},
+    {"model": "common.Currency", "pk": 2, "fields": {"code": "EUR", "name": "Euro", "symbol": "€"}},
+    {"model": "common.Currency", "pk": 3, "fields": {"code": "TRY", "name": "Türk Lirası", "symbol": "₺"}},
+    {"model": "common.Currency", "pk": 4, "fields": {"code": "XAU", "name": "Altın", "symbol": "XAU"}},
+    {"model": "common.Currency", "pk": 5, "fields": {"code": "JPY", "name": "Japon Yeni", "symbol": "¥"}},
+    {"model": "common.Currency", "pk": 6, "fields": {"code": "GBP", "name": "İngiliz Pound", "symbol": "£"}},
+
+    {"model": "common.BankName", "pk": 1, "fields": {"name": "Denizbank"}},
+    {"model": "common.BankName", "pk": 2, "fields": {"name": "Enpara"}},
+    {"model": "common.BankName", "pk": 3, "fields": {"name": "ING"}},
+    {"model": "common.BankName", "pk": 4, "fields": {"name": "YapıKredi"}},
+    {"model": "common.BankName", "pk": 5, "fields": {"name": "Vakıfbank"}},
+    {"model": "common.BankName", "pk": 6, "fields": {"name": "Garanti"}},
+    {"model": "common.BankName", "pk": 7, "fields": {"name": "Halkbank"}},
+    {"model": "common.BankName", "pk": 8, "fields": {"name": "TEB"}},
+    {"model": "common.BankName", "pk": 9, "fields": {"name": "QNBfinansbank"}}
+]

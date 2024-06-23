@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Kredi Kartları</h2>
+<ul>
+    {% for card in credit_cards %}
+    <li>{{ card.name }} - {{ card.bank.name }} - {{ card.currency.code }} - Limit: {{ card.limit }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

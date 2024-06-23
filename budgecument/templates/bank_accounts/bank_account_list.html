@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Budgecument - Banka Hesapları{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <h4 class="p-2 text-center">Banka Hesapları</h4>
+    <hr>
+    <a href="{% url 'bank_account_create' %}" class="btn btn-outline-success btn-sm">Ekle &nbsp;
+    <i class="fa fa-plus-circle" aria-hidden="true"></i></a>
+    <hr>
+
+<table class="table table-hover table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th class="text-center" scope="col">#</th>
+            <th class="text-center" scope="col">Hesap Adı</th>
+            <th class="text-center" scope="col">Mevcut Bakiye</th>
+            <th class="text-center" scope="col">Detaylar</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if object_list %}
+            {% for object in object_list %}
+            <tr>
+                <td class="text-center">{{ forloop.counter }}</td>
+                <td class="text-left">{{ object.bank }} - {{ object.name }} ({{ object.currency.code }})</td>
+                <td class="table-right">{{ object.current_balance }} {{ object.currency.symbol }}</td>
+
+                <td class="text-center">
+                    <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=object.uid %}"><i class="fa fa-eye" aria-hidden="true"></i></a>
+                    <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=object.uid %}"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
+                    <a class="btn btn-danger btn-sm" href="#" onclick="showModal('{{ object.uid }}')"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="8">No bank accounts found.</td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<!-- Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content modal-dialog modal-lg">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <p id="modalText">Bu banka hesabını silmek istediğinize emin misiniz?</p>
+        <form id="deleteForm" method="post" action="">
+            {% csrf_token %}
+            <input type="hidden" name="uid" id="deleteUid" value="">
+            <button type="submit" class="btn btn-danger">Evet</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Hayır</button>
+        </form>
+    </div>
+</div>
+
+
+
+
+</div>
+
+
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Budgecument - Login{% endblock %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<div class="container">
+
+    {% for message in messages %}
+    <div class="message {{message.tags}} text-center">
+        {{message}}
+    </div>
+    {% endfor %}
+    <br>
+
+    <div class="container col-md-6 bg-light shadow-md p-3 form-layout">
+        <h3> Login to your account</h3>
+        <hr>
+        <br>
+
+        <form method="POST" autocomplete="off">
+            {% csrf_token %}
+            {{form.username|as_crispy_field}}
+                <br>
+                {{form.password|as_crispy_field}}
+                <br>
+                <br>
+            <button type="submit" class="btn btn-primary w-100 btn-block p-2">Login &nbsp;
+                <i class="fa fa-key" aria-hidden="true"></i></button>
+        </form>
+        <br>
+        <div class="text-center">
+            <p>Don't have an account?</p><a href="{% url 'register' %}">Register</a>
+        </div>
+    </div>
+    <br>
+</div>
+{% endblock %}

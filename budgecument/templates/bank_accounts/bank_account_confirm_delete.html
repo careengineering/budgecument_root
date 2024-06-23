@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>{{ object.name }} Hesabını Sil</h1>
+  <p>Bu işlemi geri alamazsınız.</p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="submit" value="Sil">
+  </form>
+  <a href="{% url 'bank_account_list' %}">Geri Dön</a>
+{% endblock %}
