@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Budgecument - İşlemi Sil{% endblock %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container col-md-6 bg-light shadow-md p-3 form-layout">
+    <h3>İşlemi Sil</h3>
+    <form method="post">
+        {% csrf_token %}
+        <p>Bu işlemi silmek istediğinize emin misiniz?</p>
+        <button type="submit" class="btn btn-danger">Evet, Sil</button>
+        <a href="{% url 'bank_account_detail' uid=transaction.source_account.uid %}" class="btn btn-secondary">Hayır, Geri Dön</a>
+    </form>
+</div>
+{% endblock %}
