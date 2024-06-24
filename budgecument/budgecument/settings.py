@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     #CC: my apps
     "apps.user_accounts",
     "apps.bank_accounts",
-    "apps.credit_cards",
+    # "apps.credit_cards",
     "apps.common",
 
     # CC: forms

@@ -23,6 +23,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("user_accounts/", include('apps.user_accounts.urls')),
     path("bank_accounts/", include('apps.bank_accounts.urls')),
-    path("credit_cards/", include('apps.credit_cards.urls')),
+    # path("credit_cards/", include('apps.credit_cards.urls')),
     path('dashboard/', views.dashboard, name='dashboard'),
 ]

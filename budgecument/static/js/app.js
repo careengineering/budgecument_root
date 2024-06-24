@@ -25,17 +25,17 @@ window.onclick = function(event) {
 
 
 //Hide destination
-function showHideDestination() {
-    var transactionType = document.getElementById('id_transaction_type').value;
-    var destinationField = document.getElementById('id_destination_account').parentNode.parentNode;
-
-    if (transactionType == '2') {  // Assuming 'TRANSFER' has value '2', adjust as per your model definition
-        destinationField.style.display = 'block';
-    } else {
-        destinationField.style.display = 'none';
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    showHideDestination();  // Initial check when the form loads
-});
+//function showHideDestination() {
+//    var transactionType = document.getElementById('id_transaction_type').value;
+//    var destinationField = document.getElementById('id_destination_account').parentNode.parentNode;
+//
+//    if (transactionType == '2') {  // Assuming 'TRANSFER' has value '2', adjust as per your model definition
+//        destinationField.style.display = 'block';
+//    } else {
+//        destinationField.style.display = 'none';
+//    }
+//}
+//
+//document.addEventListener('DOMContentLoaded', function () {
+//    showHideDestination();  // Initial check when the form loads
+//});

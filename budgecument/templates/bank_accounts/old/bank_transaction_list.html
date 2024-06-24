@@ -30,12 +30,12 @@
                 <td>{{ transaction.amount }}</td>
                 <td>{{ transaction.description }}</td>
                 <td>
-                    <a class="btn btn-primary btn-sm" href="{% url 'bank_transaction_detail' transaction_uid=transaction.uid %}">
-                        <i class="fa fa-eye" aria-hidden="true"></i></a>
-                    <a class="btn btn-success btn-sm" href="{% url 'bank_transaction_edit' transaction_uid=transaction.uid %}">
-                        <i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
-                    <a class="btn btn-danger btn-sm" href="{% url 'bank_transaction_delete' transaction_uid=transaction.uid %}">
-                        <i class="fa fa-trash" aria-hidden="true"></i></a>
+<!--                    <a class="btn btn-primary btn-sm" href="{% url 'bank_transaction_detail' transaction_uid=transaction.uid %}">-->
+<!--                        <i class="fa fa-eye" aria-hidden="true"></i></a>-->
+<!--                    <a class="btn btn-success btn-sm" href="{% url 'bank_transaction_edit' transaction_uid=transaction.uid %}">-->
+<!--                        <i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>-->
+<!--                    <a class="btn btn-danger btn-sm" href="{% url 'bank_transaction_delete' transaction_uid=transaction.uid %}">-->
+<!--                        <i class="fa fa-trash" aria-hidden="true"></i></a>-->
                 </td>
             </tr>
             {% endfor %}

@@ -1,9 +1,10 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from .models import BankAccount, BankTransaction
-from .forms import BankAccountForm, BankTransactionForm
+from .models import BankAccount, Transaction, BankTransaction
+from .forms import TransactionForm, BankTransactionForm
+
 
 # - Bank Account
 class BankAccountListView(LoginRequiredMixin, ListView):
@@ -24,15 +25,15 @@ class BankAccountDetailView(LoginRequiredMixin, DetailView):
         uid = self.kwargs.get('uid')
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        bank_account = self.get_object()
-        context['transactions'] = BankTransaction.objects.filter(
-            source_account=bank_account
-        ) | BankTransaction.objects.filter(
-            destination_account=bank_account
-        )
-        return context
+    # def get_context_data(self, **kwargs):
+    #     context = super().get_context_data(**kwargs)
+    #     bank_account = self.get_object()
+    #     context['transactions'] = BankTransaction.objects.filter(
+    #         source_account=bank_account
+    #     ) | BankTransaction.objects.filter(
+    #         destination_account=bank_account
+    #     )
+    #     return context
 
 
 class BankAccountCreateView(LoginRequiredMixin, CreateView):
@@ -75,7 +76,7 @@ class BankTransactionListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return BankTransaction.objects.filter(source_account__account_holder=self.request.user.accountholder) | \
-               BankTransaction.objects.filter(destination_account__account_holder=self.request.user.accountholder)
+            BankTransaction.objects.filter(destination_account__account_holder=self.request.user.accountholder)
 
 
 class BankTransactionCreateView(LoginRequiredMixin, CreateView):
@@ -87,7 +88,6 @@ class BankTransactionCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.transaction_person = self.request.user.accountholder
         return super().form_valid(form)
-
 
 
 class BankTransactionDetailView(LoginRequiredMixin, DetailView):
@@ -106,8 +106,10 @@ class BankTransactionUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
-        form.fields['source_account'].queryset = BankAccount.objects.filter(account_holder=self.request.user.accountholder)
-        form.fields['destination_account'].queryset = BankAccount.objects.filter(account_holder=self.request.user.accountholder)
+        form.fields['source_account'].queryset = BankAccount.objects.filter(
+            account_holder=self.request.user.accountholder)
+        form.fields['destination_account'].queryset = BankAccount.objects.filter(
+            account_holder=self.request.user.accountholder)
         return form
 
 
@@ -116,3 +118,34 @@ class BankTransactionDeleteView(LoginRequiredMixin, DeleteView):
     template_name = 'bank_accounts/bank_transaction_confirm_delete.html'
     success_url = reverse_lazy('bank_transaction_list')
     pk_url_kwarg = 'transaction_uid'
+
+
+class TransactionListView(LoginRequiredMixin, ListView):
+    model = Transaction
+    template_name = 'bank_accounts/transaction_list.html'
+    context_object_name = 'transactions'
+
+    def get_queryset(self):
+        return Transaction.objects.filter(source_account__account_holder=self.request.user.accountholder)
+
+
+class TransactionCreateView(LoginRequiredMixin, CreateView):
+    model = Transaction
+    form_class = TransactionForm
+    template_name = 'bank_accounts/transaction_form.html'
+    success_url = reverse_lazy('transaction-list')
+
+    def get_form(self, form_class=None):
+        form = super(TransactionCreateView, self).get_form(form_class)
+        form.fields['source_account'].queryset = BankAccount.objects.filter(
+            account_holder=self.request.user.accountholder)
+        form.fields['destination_account'].queryset = BankAccount.objects.filter(
+            account_holder=self.request.user.accountholder)
+        return form
+
+    def form_valid(self, form):
+        form.instance.source_account = form.cleaned_data['source_account']
+        if form.cleaned_data['transaction_type'] == 'transfer':
+            form.instance.destination_account = form.cleaned_data['destination_account']
+        form.instance.amount = form.cleaned_data['amount']
+        return super().form_valid(form)

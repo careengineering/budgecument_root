@@ -1,39 +1,22 @@
 {% extends "base.html" %}
-
 {% block title %}Budgecument - Yeni Banka İşlemi{% endblock %}
 
 {% load crispy_forms_tags %}
 
-
-
 {% block content %}
 
 <div class="container col-md-6 bg-light shadow-md p-3 form-layout">
-
   <h3>Yeni Banka İşlemi</h3>
-
   <form method="post" autocomplete="off">
-
     {% csrf_token %}
-
-    {{ form|as_p }}
-
-    <p>İşlemi Yapan: {{ form.account_holder.value }}</p>  # Access hidden field
-
+    {{ form|crispy }}
     <button type="submit" class="btn btn-success w-40 btn-block p-2">Kaydet &nbsp;
-
       <i class="fa fa-floppy-o" aria-hidden="true"></i>
-
     </button>
-
     <a href="{% url 'bank_transaction_list' %}" class="btn btn-secondary w-40 btn-block p-2">Geri Dön &nbsp;
-
       <i class="fa fa-arrow-circle-left" aria-hidden="true"></i>
-
     </a>
-
   </form>
-
 </div>
 
 {% endblock %}

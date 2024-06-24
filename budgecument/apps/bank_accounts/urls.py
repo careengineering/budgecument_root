@@ -17,4 +17,8 @@ urlpatterns = [
          name='bank_transaction_update'),
     path('transactions/delete/<uuid:transaction_uid>/', views.BankTransactionDeleteView.as_view(),
          name='bank_transaction_delete'),
+
+    path('btransactions/', views.TransactionListView.as_view(), name='transaction-list'),
+    path('btransactions/new/', views.TransactionCreateView.as_view(), name='transaction-create'),
+
 ]
