@@ -1,11 +1,9 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from .models import BankAccount, BankTransaction
 from .forms import BankAccountForm, BankTransactionForm
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseRedirect
-
 
 # - Bank Account
 class BankAccountListView(LoginRequiredMixin, ListView):
@@ -70,7 +68,6 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
 
 
 # - Bank Transaction
-
 class BankTransactionListView(LoginRequiredMixin, ListView):
     model = BankTransaction
     template_name = 'bank_accounts/bank_transaction_list.html'
@@ -83,25 +80,22 @@ class BankTransactionListView(LoginRequiredMixin, ListView):
 
 class BankTransactionCreateView(LoginRequiredMixin, CreateView):
     model = BankTransaction
-    form_class = BankTransactionForm
-    template_name = 'bank_transaction_form.html'
-
-    def get_initial(self):
-        initial = super().get_initial()
-        account_holder = get_object_or_404(AccountHolder, user=self.request.user)
-        if account_holder.default_bank_account:
-            initial['source_account'] = account_holder.default_bank_account
-        return initial
+    form_class = BankTransactionForm  # Set the form class here
+    template_name = 'bank_accounts/bank_transaction_form.html'
+    success_url = reverse_lazy('bank_transaction_list')
 
     def form_valid(self, form):
-        form.instance.transaction_person = self.request.user.account_holder  # Assuming you have a one-to-one relation with User and AccountHolder
+        form.instance.transaction_person = self.request.user.accountholder
         return super().form_valid(form)
+
+
 
 class BankTransactionDetailView(LoginRequiredMixin, DetailView):
     model = BankTransaction
     template_name = 'bank_accounts/bank_transaction_detail.html'
     context_object_name = 'transaction'
     pk_url_kwarg = 'transaction_uid'
+
 
 class BankTransactionUpdateView(LoginRequiredMixin, UpdateView):
     model = BankTransaction
@@ -115,6 +109,7 @@ class BankTransactionUpdateView(LoginRequiredMixin, UpdateView):
         form.fields['source_account'].queryset = BankAccount.objects.filter(account_holder=self.request.user.accountholder)
         form.fields['destination_account'].queryset = BankAccount.objects.filter(account_holder=self.request.user.accountholder)
         return form
+
 
 class BankTransactionDeleteView(LoginRequiredMixin, DeleteView):
     model = BankTransaction

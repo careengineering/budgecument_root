@@ -144,11 +144,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = "MS_ann9TX@trial-3yxj6ljv09xldo2r.mlsender.net"
+#EMAIL_HOST = os.getenv('EMAIL_HOST')
+#EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
+#EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
+#EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+#EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+#DEFAULT_FROM_EMAIL = "MS_ann9TX@trial-3yxj6ljv09xldo2r.mlsender.net"
 
 LOGIN_REDIRECT_URL = "/"
