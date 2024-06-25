@@ -8,29 +8,29 @@
   <form method="post" autocomplete="off">
     {% csrf_token %}
 
-      {{ form.date.label_tag }}
-      {{ form.date }}
-      <br>
+    {{ form.date.label_tag }}
+    {{ form.date }}
+    <br>
 
-      {{ form.transaction_type.label_tag }}
-      {{ form.transaction_type }}
-      <br>
-      {{ form.source_account.label_tag }}
-      {{ form.source_account }}
-      <br>
+    {{ form.transaction_type.label_tag }}
+    {{ form.transaction_type }}
+    <br>
+    {{ form.source_account.label_tag }}
+    {{ form.source_account }}
+    <br>
 
-      <div id="destination_account_field" style="display: none;">
-        {{ form.destination_account.label_tag }}
-        {{ form.destination_account }}
-      </div>
-      <br>
+    <div id="destination_account_field" style="display: none;">
+      {{ form.destination_account.label_tag }}
+      {{ form.destination_account }}
+    </div>
+    <br>
 
-      {{ form.description.label_tag }}
-      {{ form.description }}
-      <br>
-      {{ form.amount.label_tag }}
-      {{ form.amount }}
-      <br>
+    {{ form.description.label_tag }}
+    {{ form.description }}
+    <br>
+    {{ form.amount.label_tag }}
+    {{ form.amount }}
+    <br>
 
     <button type="submit" class="btn btn-success w-40 btn-block p-2">Kaydet &nbsp;
       <i class="fa fa-floppy-o" aria-hidden="true"></i></button>
@@ -39,19 +39,3 @@
   </form>
 </div>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

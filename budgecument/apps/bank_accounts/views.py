@@ -5,7 +5,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from .models import BankAccount, Transaction
 from .forms import TransactionForm
 
-
+####################################################################################
 # - Bank Account
 class BankAccountListView(LoginRequiredMixin, ListView):
     model = BankAccount
@@ -68,6 +68,11 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
 
 
+
+
+
+
+####################################################################################
 # Transactions
 class TransactionListView(LoginRequiredMixin, ListView):
     model = Transaction
@@ -115,6 +120,7 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
 
         return super().form_valid(form)
 
+
 class TransactionUpdateView(LoginRequiredMixin, UpdateView):
     model = Transaction
     form_class = TransactionForm
@@ -136,4 +142,3 @@ class TransactionDeleteView(LoginRequiredMixin, DeleteView):
     def get_object(self):
         uid = self.kwargs.get('transaction_uid')
         return get_object_or_404(Transaction, uid=uid, source_account__account_holder=self.request.user.accountholder)
-
