@@ -9,16 +9,13 @@ urlpatterns = [
     path('edit/<uuid:uid>/', views.BankAccountUpdateView.as_view(), name='bank_account_edit'),
     path('delete/<uuid:uid>/', views.BankAccountDeleteView.as_view(), name='bank_account_delete'),
 
-    # Bank Transaction URLs
-    path('transactions/', views.BankTransactionListView.as_view(), name='bank_transaction_list'),
-    path('transactions/create/', views.BankTransactionCreateView.as_view(), name='bank_transaction_create'),
-    path('transactions/<uuid:transaction_uid>/', views.BankTransactionDetailView.as_view(), name='bank_transaction_detail'),
-    path('transactions/update/<uuid:transaction_uid>/', views.BankTransactionUpdateView.as_view(),
-         name='bank_transaction_update'),
-    path('transactions/delete/<uuid:transaction_uid>/', views.BankTransactionDeleteView.as_view(),
-         name='bank_transaction_delete'),
-
-    path('btransactions/', views.TransactionListView.as_view(), name='transaction-list'),
-    path('btransactions/new/', views.TransactionCreateView.as_view(), name='transaction-create'),
-
+    # Transaction URLs
+    path('transactions/', views.TransactionListView.as_view(), name='transaction_list'),
+    path('transactions/new/', views.TransactionCreateView.as_view(), name='transaction_create'),
+    path('transactions/<uuid:transaction_uid>/', views.TransactionDetailView.as_view(),
+         name='transaction_detail'),
+    path('transactions/update/<uuid:transaction_uid>/', views.TransactionUpdateView.as_view(),
+         name='transaction_update'),
+    path('transactions/delete/<uuid:transaction_uid>/', views.TransactionDeleteView.as_view(),
+         name='transaction_delete'),
 ]

@@ -1,10 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}İşlem Detayı{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h3>İşlem Detayı</h3>
+    <ul>
+        <li><strong>Tarih:</strong> {{ transaction.date }}</li>
+        <li><strong>İşlem Türü:</strong> {{ transaction.get_transaction_type_display }}</li>
+        <li><strong>Kaynak Hesap:</strong> {{ transaction.source_account }}</li>
+        <li><strong>Hedef Hesap:</strong> {{ transaction.destination_account|default:"-" }}</li>
+        <li><strong>Açıklama:</strong> {{ transaction.description }}</li>
+        <li><strong>Tutar:</strong> {{ transaction.amount }}</li>
+    </ul>
+    <a href="{% url 'transaction_list' %}" class="btn btn-secondary">Geri Dön</a>
+</div>
+{% endblock %}

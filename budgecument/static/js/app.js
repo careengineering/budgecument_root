@@ -24,18 +24,24 @@ window.onclick = function(event) {
 };
 
 
-//Hide destination
-//function showHideDestination() {
-//    var transactionType = document.getElementById('id_transaction_type').value;
-//    var destinationField = document.getElementById('id_destination_account').parentNode.parentNode;
-//
-//    if (transactionType == '2') {  // Assuming 'TRANSFER' has value '2', adjust as per your model definition
-//        destinationField.style.display = 'block';
-//    } else {
-//        destinationField.style.display = 'none';
-//    }
-//}
-//
-//document.addEventListener('DOMContentLoaded', function () {
-//    showHideDestination();  // Initial check when the form loads
-//});
+
+//Hide source_account
+document.addEventListener('DOMContentLoaded', function() {
+      const transactionTypeField = document.getElementById('id_transaction_type');
+      const destinationAccountField = document.getElementById('destination_account_field');
+
+      // Function to toggle the visibility of the destination account field
+      function toggleDestinationAccountField() {
+        if (transactionTypeField.value === 'transfer') {
+          destinationAccountField.style.display = 'block';
+        } else {
+          destinationAccountField.style.display = 'none';
+        }
+      }
+
+      // Event listener for changes in the transaction type field
+      transactionTypeField.addEventListener('change', toggleDestinationAccountField);
+
+      // Initial call to set the correct visibility based on the initial value
+      toggleDestinationAccountField();
+    });

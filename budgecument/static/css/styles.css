@@ -6,6 +6,10 @@
     color: green;
 }
 
+
+
+
+
 .modal {
     display: none;
     position: fixed;
@@ -41,4 +45,5 @@
     text-decoration: none;
     cursor: pointer;
 }
+
 
