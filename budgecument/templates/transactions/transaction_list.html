@@ -23,10 +23,11 @@
               <th scope="col">Hedef Hesap</th>
               <th scope="col">Açıklama</th>
               <th scope="col">Tutar</th>
-              <th scope="col" class="col-sm-2">Detaylar</th>
+              <th scope="col" class="col-sm-1">Detaylar</th>
           </tr>
       </thead>
       <tbody>
+      {% if transactions %}
           {% for transaction in transactions %}
 
           <tr class="text-center">
@@ -38,17 +39,35 @@
               <td>{{ transaction.description }}</td>
               <td class="{% if transaction.get_transaction_type_display == 'Giden' %}text-danger{% endif %}">{% if transaction.get_transaction_type_display == "Giden" %}-{{ transaction.amount }}{{ transaction.source_account.currency.symbol }}{% else %}{{ transaction.amount }}{{ transaction.source_account.currency.symbol }}{% endif %}</td>
               <td>
-                  <a class="btn btn-primary btn-sm" href="{% url 'transaction_detail' transaction_uid=transaction.uid %}">
-                      <i class="fa fa-eye" aria-hidden="true"></i></a>
+<!--                  gerekli değil şimdilik dursun-->
+<!--                  <a class="btn btn-primary btn-sm" href="{% url 'transaction_detail' transaction_uid=transaction.uid %}">-->
+<!--                      <i class="fa fa-eye" aria-hidden="true"></i></a>-->
                   <a class="btn btn-success btn-sm" href="{% url 'transaction_update' transaction_uid=transaction.uid %}">
                       <i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
+
+                  
                   <a class="btn btn-danger btn-sm" href="{% url 'transaction_delete' transaction_uid=transaction.uid %}">
                       <i class="fa fa-trash" aria-hidden="true"></i></a>
               </td>
           </tr>
           {% endfor %}
+      {% else %}
+            <tr>
+                <td colspan="8">İşlem bulunamadı.</td>
+            </tr>
+        {% endif %}
       </tbody>
   </table>
+
+
+
+
+
+
+
+
+
+
 </div>
 
 {% endblock %}
