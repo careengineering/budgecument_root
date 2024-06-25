@@ -4,6 +4,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from .models import BankAccount, Transaction
 from .forms import TransactionForm
+from django.http import HttpResponseRedirect
+
 
 ####################################################################################
 # - Bank Account
@@ -142,3 +144,29 @@ class TransactionDeleteView(LoginRequiredMixin, DeleteView):
     def get_object(self):
         uid = self.kwargs.get('transaction_uid')
         return get_object_or_404(Transaction, uid=uid, source_account__account_holder=self.request.user.accountholder)
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        # Get the source account of the transaction
+        source_account = self.object.source_account
+
+        # Update current_balance of the source account
+        if self.object.transaction_type == 'deposit':
+            source_account.current_balance -= self.object.amount
+        elif self.object.transaction_type == 'withdraw':
+            source_account.current_balance += self.object.amount
+        elif self.object.transaction_type == 'transfer':
+            source_account.current_balance += self.object.amount
+
+            # If it's a transfer, also update the destination account's balance
+            destination_account = self.object.destination_account
+            destination_account.current_balance -= self.object.amount
+            destination_account.save()
+
+        source_account.save()
+
+        # Delete the transaction object
+        self.object.delete()
+
+        return HttpResponseRedirect(self.get_success_url())
