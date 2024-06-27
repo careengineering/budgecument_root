@@ -1,5 +1,4 @@
 from django.db import models
-from django.db import transaction as db_transaction
 from ..common.models import AccountHolder, Currency, BankName, OtherHolder
 import uuid
 import datetime

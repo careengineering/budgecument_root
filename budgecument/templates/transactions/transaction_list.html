@@ -4,7 +4,6 @@
 {% block title %}Budgecument - Hesap İşlemleri {% endblock %}
 
 {% block content %}
-
 <div class="container">
     <div class="d-flex justify-content-between align-items-center">
     <h4 class="p-2">Hesap İşlemleri</h4>
@@ -12,7 +11,6 @@
     <i class="fa fa-plus-circle" aria-hidden="true"></i></a>
   </div>
     <br>
-
   <table class="table table-hover table-bordered">
       <thead class="table-light text-center">
           <tr>
@@ -29,7 +27,6 @@
       <tbody>
       {% if transactions %}
           {% for transaction in transactions %}
-
           <tr class="text-center">
               <td>{{ forloop.counter }}</td>
               <td>{{ transaction.date |date:"d/m/Y" }}</td>
@@ -58,39 +55,6 @@
         {% endif %}
       </tbody>
   </table>
-
-
-
-
-
-
-
-
-
-
 </div>
 
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
