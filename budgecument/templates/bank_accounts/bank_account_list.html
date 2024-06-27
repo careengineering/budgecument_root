@@ -32,9 +32,21 @@
                 <td class="text-center {% if object.current_balance < 0 %}text-danger{% endif %}">{{ object.current_balance }} {{ object.currency.symbol }}</td>
 
                 <td class="text-center">
-                    <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=object.uid %}"><i class="fa fa-eye" aria-hidden="true"></i></a>
-                    <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=object.uid %}"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
-                    <a class="btn btn-danger btn-sm" href="#" onclick="showModal('{{ object.uid }}')"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                    <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=object.uid %}">
+                        <i class="fa fa-eye" aria-hidden="true"></i>
+                    </a>
+
+                    <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=object.uid %}">
+                        <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
+                    </a>
+
+                    <a href="#" class="btn btn-danger btn-sm" onclick="showModal('{{ object.uid }}',
+                                                                        'Bu banka hesabını silmek istediğinize emin misiniz?',
+                                                                         '{% url 'bank_account_delete' uid=object.uid %}')">
+                        <i class="fa fa-trash" aria-hidden="true"></i>
+                    </a>
+
+
                 </td>
             </tr>
             {% endfor %}
@@ -46,19 +58,7 @@
     </tbody>
 </table>
 
-<!-- Modal -->
-<div id="deleteModal" class="modal">
-    <div class="modal-content modal-dialog modal-lg">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <p id="modalText">Bu banka hesabını silmek istediğinize emin misiniz?</p>
-        <form id="deleteForm" method="post" action="">
-            {% csrf_token %}
-            <input type="hidden" name="uid" id="deleteUid" value="">
-            <button type="submit" class="btn btn-danger">Evet</button>
-            <button type="button" class="btn btn-secondary" onclick="closeModal()">Hayır</button>
-        </form>
-    </div>
-</div>
+
 
 
 </div>

@@ -64,9 +64,10 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
     model = BankAccount
     template_name = 'bank_accounts/bank_account_confirm_delete.html'
     success_url = reverse_lazy('bank_account_list')
+    pk_url_kwarg = 'uid'
 
-    def get_object(self):
-        uid = self.kwargs.get('uid')
+    def get_object(self, queryset=None):
+        uid = self.kwargs.get(self.pk_url_kwarg)
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
 
 

@@ -43,8 +43,12 @@
                       <i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
 
                   
-                  <a class="btn btn-danger btn-sm" href="{% url 'transaction_delete' transaction_uid=transaction.uid %}">
-                      <i class="fa fa-trash" aria-hidden="true"></i></a>
+                  <a href="#" class="btn btn-danger btn-sm" onclick="showModal('{{ transaction.uid }}',
+                                                                        'Bu işlemi silmek istediğinize emin misiniz?',
+                                                                         '{% url 'transaction_delete' transaction_uid=transaction.uid %}')">
+                        <i class="fa fa-trash" aria-hidden="true"></i>
+                    </a>
+
               </td>
           </tr>
           {% endfor %}
