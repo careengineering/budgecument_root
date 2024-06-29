@@ -10,7 +10,7 @@ class BankAccount(models.Model):
     bank = models.ForeignKey(BankName, on_delete=models.CASCADE)
     account_holder = models.ForeignKey(AccountHolder, on_delete=models.CASCADE)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    current_balance = models.DecimalField(max_digits=100, decimal_places=2)
+    current_balance = models.DecimalField(max_digits=100, decimal_places=2,default=0.00)
 
     def __str__(self):
         return f"{self.bank} {self.name} - {self.currency.code}"
