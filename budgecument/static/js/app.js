@@ -25,25 +25,77 @@ window.onclick = function(event) {
 
 
 
-//Hide source_account
+// New transaction field visibilities
 document.addEventListener('DOMContentLoaded', function() {
     const transactionTypeField = document.getElementById('id_transaction_type');
     const sourceAccountField = document.getElementById('id_source_account');
     const destinationAccountField = document.getElementById('id_destination_account');
+    const descriptionField = document.getElementById('id_description');
+    const amountField = document.getElementById('id_amount');
+    const sourceAccountDiv = document.getElementById('source_account_field');
+    const destinationAccountDiv = document.getElementById('destination_account_field');
+    const descriptionDiv = document.getElementById('description_field');
+    const amountDiv = document.getElementById('amount_field');
 
-    // Function to toggle the visibility of the destination account field
-    function toggleDestinationAccountField() {
-        if (transactionTypeField.value === 'transfer') {
-            destinationAccountField.parentElement.style.display = 'block';
+    function toggleFields() {
+        const transactionType = transactionTypeField.value;
+
+        if (transactionType === 'deposit' || transactionType === 'withdraw') {
+            sourceAccountDiv.style.display = 'block';
+            destinationAccountDiv.style.display = 'none';
+            descriptionDiv.style.display = 'block';
+            amountDiv.style.display = 'block';
+        } else if (transactionType === 'transfer') {
+            sourceAccountDiv.style.display = 'block';
+            destinationAccountDiv.style.display = 'block';
+            descriptionDiv.style.display = 'block';
+            amountDiv.style.display = 'block';
+            updateDestinationAccountOptions();
         } else {
-            destinationAccountField.parentElement.style.display = 'none';
+            sourceAccountDiv.style.display = 'none';
+            destinationAccountDiv.style.display = 'none';
+            descriptionDiv.style.display = 'none';
+            amountDiv.style.display = 'none';
         }
     }
 
-    // Event listener for changes in the transaction type field
-    transactionTypeField.addEventListener('change', toggleDestinationAccountField);
-    sourceAccountField.addEventListener('change', toggleDestinationAccountField);
+    function updateDestinationAccountOptions() {
+        const sourceAccountId = sourceAccountField.value;
+        if (sourceAccountId) {
+            const apiUrl = `/bank_accounts/api/filter_destination_accounts/?source_account=${sourceAccountId}`;
+            console.log(`Fetching destination accounts from: ${apiUrl}`);
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        console.error('Server error:', data.error);
+                        return;
+                    }
+                    destinationAccountField.innerHTML = '';
+                    data.options.forEach(option => {
+                        const newOption = document.createElement('option');
+                        newOption.value = option.value;
+                        newOption.text = option.display;
+                        destinationAccountField.appendChild(newOption);
+                    });
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                });
+        }
+    }
 
-    // Initial call to set the correct visibility based on the initial value
-    toggleDestinationAccountField();
+    transactionTypeField.addEventListener('change', toggleFields);
+    sourceAccountField.addEventListener('change', updateDestinationAccountOptions);
+
+    toggleFields();
+
+    if (transactionTypeField.value === 'transfer') {
+        updateDestinationAccountOptions();
+    }
 });
