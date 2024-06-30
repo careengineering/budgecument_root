@@ -4,64 +4,50 @@
 {% block title %}Budgecument - Banka Hesapları{% endblock %}
 
 {% block content %}
-
 <div class="container">
     <div class="d-flex justify-content-between align-items-center">
-    <h4 class="p-2">Banka Hesapları</h4>
-    <a href="{% url 'bank_account_create' %}" class="btn btn-outline-success btn-sm">Ekle &nbsp;
-    <i class="fa fa-plus-circle" aria-hidden="true"></i></a>
-  </div>
+        <h4 class="p-2">Banka Hesapları</h4>
+        <a href="{% url 'bank_account_create' %}" class="btn btn-outline-success btn-sm">Ekle &nbsp;
+        <i class="fa fa-plus-circle" aria-hidden="true"></i></a>
+    </div>
     <br>
 
-
-<table class="table table-hover table-bordered">
-    <thead class="table-light text-center">
-        <tr>
-            <th scope="col" class="col-sm-1">#</th>
-            <th scope="col">Hesap Adı</th>
-            <th scope="col">Mevcut Bakiye</th>
-            <th scope="col" class="col-sm-2">Detaylar</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% if object_list %}
-            {% for object in object_list %}
-            <tr>
-                <td class="text-center">{{ forloop.counter }}</td>
-                <td class="text-left">{{ object.bank }} - {{ object.name }} ({{ object.currency.code }})</td>
-                <td class="text-center {% if object.current_balance < 0 %}text-danger{% endif %}">{{ object.current_balance }} {{ object.currency.symbol }}</td>
-
-                <td class="text-center">
-                    <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=object.uid %}">
-                        <i class="fa fa-eye" aria-hidden="true"></i>
-                    </a>
-
-                    <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=object.uid %}">
-                        <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
-                    </a>
-
-                    <a href="#" class="btn btn-danger btn-sm" onclick="showModal('{{ object.uid }}',
+    {% if grouped_accounts %}
+        {% for bank, accounts in grouped_accounts %}
+            <div class="card mb-3" style="background-color: {{ bank.color }}">
+                <div class="card-header">
+                    {{ bank.name }}
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for account in accounts %}
+                        <li class="list-group-item">
+                            <div class="row">
+                                <div class="col-sm-1 text-center">{{ forloop.counter }}</div>
+                                <div class="col-sm-5">{{ account.name }} ({{ account.currency.code }})</div>
+                                <div class="col-sm-3 text-center {% if account.current_balance < 0 %}text-danger{% endif %}">
+                                    {{ account.current_balance }} {{ account.currency.symbol }}
+                                </div>
+                                <div class="col-sm-3 text-center">
+                                    <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=account.uid %}">
+                                        <i class="fa fa-eye" aria-hidden="true"></i>
+                                    </a>
+                                    <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=account.uid %}">
+                                        <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-danger btn-sm" onclick="showModal('{{ account.uid }}',
                                                                         'Bu banka hesabını silmek istediğinize emin misiniz?',
-                                                                         '{% url 'bank_account_delete' uid=object.uid %}')">
-                        <i class="fa fa-trash" aria-hidden="true"></i>
-                    </a>
-
-
-                </td>
-            </tr>
-            {% endfor %}
-        {% else %}
-            <tr>
-                <td colspan="8">Banka hesabı bulunamadı.</td>
-            </tr>
-        {% endif %}
-    </tbody>
-</table>
-
-
-
-
+                                                                         '{% url 'bank_account_delete' uid=account.uid %}')">
+                                        <i class="fa fa-trash" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>Banka hesabı bulunamadı.</p>
+    {% endif %}
 </div>
-
-
 {% endblock %}

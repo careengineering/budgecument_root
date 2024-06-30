@@ -1,16 +1,21 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+
 from ..common.models import AccountHolder, Currency, BankName, OtherHolder
-import uuid
+
 import datetime
+import uuid
 
 
+####################################################################################
+# - Bank Account
 class BankAccount(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=200)
     bank = models.ForeignKey(BankName, on_delete=models.CASCADE)
     account_holder = models.ForeignKey(AccountHolder, on_delete=models.CASCADE)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    current_balance = models.DecimalField(max_digits=100, decimal_places=2,default=0.00)
+    current_balance = models.DecimalField(max_digits=100, decimal_places=2, default=0.00)
 
     def __str__(self):
         return f"{self.bank} {self.name} - {self.currency.code}"
@@ -20,23 +25,8 @@ class BankAccount(models.Model):
         verbose_name_plural = "Banka Hesapları"
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+####################################################################################
+# - Transaction
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
         ('deposit', 'Gelen'),
@@ -46,7 +36,8 @@ class Transaction(models.Model):
 
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     source_account = models.ForeignKey(BankAccount, related_name='transactions', on_delete=models.CASCADE)
-    destination_account = models.ForeignKey(BankAccount, related_name='received_transactions', on_delete=models.CASCADE, null=True, blank=True)
+    destination_account = models.ForeignKey(BankAccount, related_name='received_transactions', on_delete=models.CASCADE,
+                                            null=True, blank=True)
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
     description = models.CharField(max_length=255)
     date = models.DateTimeField(default=datetime.datetime.now)

@@ -1,10 +1,15 @@
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse_lazy
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+
 from .models import BankAccount, Transaction
 from .forms import TransactionForm
-from django.http import HttpResponseRedirect
+
+from itertools import groupby
+from operator import itemgetter
 
 
 ####################################################################################
@@ -14,7 +19,18 @@ class BankAccountListView(LoginRequiredMixin, ListView):
     template_name = 'bank_accounts/bank_account_list.html'
 
     def get_queryset(self):
-        return BankAccount.objects.filter(account_holder=self.request.user.accountholder)
+        account_holder = self.request.user.accountholder
+        queryset = BankAccount.objects.filter(account_holder=account_holder).order_by('bank__name')
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        bank_accounts = self.get_queryset()
+        grouped_accounts = []
+        for key, group in groupby(bank_accounts, key=lambda x: x.bank):
+            grouped_accounts.append((key, list(group)))
+        context['grouped_accounts'] = grouped_accounts
+        return context
 
 
 class BankAccountDetailView(LoginRequiredMixin, DetailView):
@@ -60,6 +76,7 @@ class BankAccountUpdateView(LoginRequiredMixin, UpdateView):
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
 
 
+
 class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
     model = BankAccount
     template_name = 'bank_accounts/bank_account_confirm_delete.html'
@@ -69,9 +86,6 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
     def get_object(self, queryset=None):
         uid = self.kwargs.get(self.pk_url_kwarg)
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
-
-
-
 
 
 

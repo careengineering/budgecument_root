@@ -26,6 +26,8 @@ class Currency(models.Model):
 
 class BankName(models.Model):
     name = models.CharField(max_length=200)
+    color = models.CharField(max_length=7, default="#efefef")
+
 
     def __str__(self):
         return f"{self.name}"
