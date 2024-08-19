@@ -3,9 +3,16 @@
 {% block content %}
   <h1>{{ object.name }} Hesabını Sil</h1>
   <p>Bu işlemi geri alamazsınız.</p>
+
   <form method="post">
     {% csrf_token %}
-    <input type="submit" value="Sil">
+    {% if object.current_balance == 0 %}
+      <input type="submit" value="Sil" class="btn btn-danger">
+    {% else %}
+      <button type="button" class="btn btn-danger" disabled>Sil</button>
+      <p class="text-danger">Hesap silinemez. Mevcut bakiye sıfır değil.</p>
+    {% endif %}
   </form>
-  <a href="{% url 'bank_account_list' %}">Geri Dön</a>
+
+  <a href="{% url 'bank_account_list' %}" class="btn btn-secondary">Geri Dön</a>
 {% endblock %}

@@ -15,7 +15,9 @@
             Ürünler
           </a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="{% url 'bank_account_list' %}">Banka Hesapları</a></li>
+            <li><a class="dropdown-item" href="{% url 'bank_account_list' %}">Aktif Banka Hesapları</a></li>
+            <li><a class="dropdown-item" href="{% url 'inactive_bank_account_list' %}">Pasif Banka Hesapları</a></li>
+            <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="{% url 'bank_account_list' %}">Kredi Kartları</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="#">Something else here</a></li>
@@ -45,7 +47,7 @@
 
 
         <li class="nav-item">
-          <a class="nav-link active" aria-current="page" href="{% url 'bank_account_list' %}">aaaa</a>
+          <a class="nav-link active" aria-current="page" href="#">aaaa</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="#">Link</a>

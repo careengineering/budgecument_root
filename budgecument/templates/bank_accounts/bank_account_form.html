@@ -8,6 +8,8 @@
   <h3>{% if object %}Hesabı Düzenle{% else %}Yeni Hesap{% endif %}</h3>
   <form method="post" autocomplete="off">
     {% csrf_token %}
+    {{form.is_active|as_crispy_field}}
+    <br>
     {{form.name|as_crispy_field}}
     <br>
     {{form.bank|as_crispy_field}}

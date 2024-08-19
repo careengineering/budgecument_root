@@ -1,3 +1,17 @@
+transaction_list.html sayfasında yeni işlem eklenirken;
+- source_account veya destination_account is_active=false ise gösterilmesin
+- source_account veya source_account listelerinde sadece hesap sahibine ait hesaplar görünsün
+- transaction_type giden seçildi ve source_account sıfır veya sıfırdan küçükse giden listenin altında bu bilgi uyarı
+olarak görünsün ama işleme izin versin
+- source_account ve destination_account listelerinde current_balance tutarıda görünsün
+- transaction_type transfer seçildi ise source_account currency_code ile aynı para birimine sahip destination_account
+listesi görünsün.
+
+
+
+
+
+
 #####################################################
 
 File Name: models.py
@@ -12,7 +26,6 @@ import datetime
 import uuid
 
 
-####################################################################################
 # - Bank Account
 class BankAccount(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -21,16 +34,33 @@ class BankAccount(models.Model):
     account_holder = models.ForeignKey(AccountHolder, on_delete=models.CASCADE)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
     current_balance = models.DecimalField(max_digits=100, decimal_places=2, default=0.00)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.bank} {self.name} - {self.currency.code}"
+
+    def delete(self, *args, **kwargs):
+        if self.current_balance != 0:
+            raise ValidationError("Hesap silinemez. Mevcut bakiye sıfır değil.")
+        super().delete(*args, **kwargs)
 
     class Meta:
         verbose_name = "Banka Hesabı"
         verbose_name_plural = "Banka Hesapları"
 
+    @property
+    def has_transactions(self):
+        return Transaction.objects.filter(source_account=self).exists() or Transaction.objects.filter(destination_account=self).exists()
 
-####################################################################################
+
+
+
+
+
+
+
+
+
 # - Transaction
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
@@ -79,19 +109,37 @@ File Name: forms.py
 File Path: ../budgecument/apps/bank_accounts/forms.py
 
 from django import forms
-from .models import BankAccount, Transaction
+from django.db.models import Q
 
+from .models import BankAccount, Transaction
 
 class BankAccountForm(forms.ModelForm):
     class Meta:
         model = BankAccount
-        fields = ['name', 'bank', 'currency', 'current_balance']
+        fields = ['name', 'bank', 'currency', 'current_balance', 'is_active']
         labels = {
             'name': 'Hesap Adı',
             'bank': 'Banka Adı',
             'currency': 'Para Birimi',
             'current_balance': 'Mevcut Bakiye',
+            'is_active': 'Aktif',
         }
+
+    def __init__(self, *args, **kwargs):
+        super(BankAccountForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:  # Check if instance has a primary key
+            if self.instance.current_balance != 0:
+                self.fields['is_active'].disabled = True
+            if self.instance.current_balance != 0 or self.instance.has_transactions:
+                self.fields['bank'].disabled = True
+                self.fields['currency'].disabled = True
+                self.fields['current_balance'].disabled = True
+            for field in self.fields:
+                if field not in ['name', 'is_active']:
+                    self.fields[field].disabled = True
+
+
+
 
 
 class TransactionForm(forms.ModelForm):
@@ -126,6 +174,7 @@ File Path: ../budgecument/apps/bank_accounts/views.py
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse_lazy
@@ -146,8 +195,7 @@ class BankAccountListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         account_holder = self.request.user.accountholder
-        queryset = BankAccount.objects.filter(account_holder=account_holder).order_by('bank__name')
-        return queryset
+        return BankAccount.objects.filter(account_holder=account_holder, is_active=True).order_by('bank__name')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -193,14 +241,17 @@ class BankAccountCreateView(LoginRequiredMixin, CreateView):
 
 class BankAccountUpdateView(LoginRequiredMixin, UpdateView):
     model = BankAccount
-    fields = ['name', 'bank', 'currency', 'current_balance']
+    form_class = BankAccountForm
     template_name = 'bank_accounts/bank_account_form.html'
     success_url = reverse_lazy('bank_account_list')
+
+    def form_valid(self, form):
+        form.instance.account_holder = self.request.user.accountholder
+        return super().form_valid(form)
 
     def get_object(self):
         uid = self.kwargs.get('uid')
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
-
 
 
 class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
@@ -209,9 +260,31 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy('bank_account_list')
     pk_url_kwarg = 'uid'
 
+    def form_valid(self, form):
+        try:
+            self.object.delete()
+            messages.success(self.request, "Hesap başarıyla silindi.")
+            return HttpResponseRedirect(self.success_url)
+        except ValidationError as e:
+            messages.error(self.request, e.message)
+            return redirect(self.request.META.get('HTTP_REFERER'))
+
     def get_object(self, queryset=None):
         uid = self.kwargs.get(self.pk_url_kwarg)
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
+
+
+class InactiveBankAccountListView(LoginRequiredMixin, ListView):
+    model = BankAccount
+    template_name = 'bank_accounts/inactive_bank_account_list.html'
+    context_object_name = 'inactive_bank_accounts'
+
+    def get_queryset(self):
+        account_holder = self.request.user.accountholder
+        queryset = BankAccount.objects.filter(account_holder=account_holder, is_active=False).order_by('bank__name')
+        return queryset
+
+
 
 
 
@@ -331,6 +404,9 @@ urlpatterns = [
     path('edit/<uuid:uid>/', views.BankAccountUpdateView.as_view(), name='bank_account_edit'),
     path('delete/<uuid:uid>/', views.BankAccountDeleteView.as_view(), name='bank_account_delete'),
 
+    # Inactive Bank Account URL
+    path('inactive/', views.InactiveBankAccountListView.as_view(), name='inactive_bank_account_list'),
+
     # Transaction URL
     path('transactions/', views.TransactionListView.as_view(), name='transaction_list'),
     path('transactions/new/', views.TransactionCreateView.as_view(), name='transaction_create'),
@@ -344,54 +420,21 @@ urlpatterns = [
 
 #####################################################
 
-File Name: bank_account_confirm_delete.html
-File Path: ../budgecument/templates/bank_accounts/bank_account_confirm_delete.html
+File Name: transaction_confirm_delete.html
+File Path: ../budgecument/templates/transactions/transaction_confirm_delete.html
 
 {% extends "base.html" %}
+{% block title %}İşlem Sil{% endblock %}
 
 {% block content %}
-  <h1>{{ object.name }} Hesabını Sil</h1>
-  <p>Bu işlemi geri alamazsınız.</p>
-  <form method="post">
-    {% csrf_token %}
-    <input type="submit" value="Sil">
-  </form>
-  <a href="{% url 'bank_account_list' %}">Geri Dön</a>
-{% endblock %}
-
-
-
-
-#####################################################
-
-File Name: bank_account_form.html
-File Path: ../budgecument/templates/bank_accounts/bank_account_form.html
-
-{% extends "base.html" %}
-{% block title %}Budgecument - Banka Hesapları {% endblock %}
-{% load crispy_forms_tags %}
-
-{% block content %}
-
-<div class="container col-md-6 bg-light shadow-md p-3 form-layout">
-  <h3>{% if object %}Hesabı Düzenle{% else %}Yeni Hesap{% endif %}</h3>
-  <form method="post" autocomplete="off">
-    {% csrf_token %}
-    {{form.name|as_crispy_field}}
-    <br>
-    {{form.bank|as_crispy_field}}
-    <br>
-    {{form.currency|as_crispy_field}}
-    <br>
-    {{form.current_balance|as_crispy_field}}
-    <br>
-    <button type="submit" class="btn btn-success w-40 btn-block p-2">Kaydet &nbsp;
-      <i class="fa fa-floppy-o" aria-hidden="true"></i></button>
-    <a href="{% url 'bank_account_list' %}" class="btn btn-secondary w-40 btn-block p-2">Geri Dön &nbsp;
-      <i class="fa fa-arrow-circle-left" aria-hidden="true"></i></a>
-  </form>
-
-
+<div class="container">
+    <h3>İşlemi Sil</h3>
+    <p>Bu işlemi silmek istediğinizden emin misiniz?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sil</button>
+        <a href="{% url 'transaction_list' %}" class="btn btn-secondary">Vazgeç</a>
+    </form>
 </div>
 {% endblock %}
 
@@ -400,29 +443,22 @@ File Path: ../budgecument/templates/bank_accounts/bank_account_form.html
 
 #####################################################
 
-File Name: bank_account_detail.html
-File Path: ../budgecument/templates/bank_accounts/bank_account_detail.html
+File Name: transaction_list.html
+File Path: ../budgecument/templates/transactions/transaction_list.html
 
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}Budgecument - Hesap Detayı{% endblock %}
+{% block title %}Budgecument - Hesap İşlemleri {% endblock %}
 
 {% block content %}
 <div class="container">
-    <h4 class="p-2 text-center">{{ bank_account.bank.name }} {{ bank_account.name }} Hesabı ({{ bank_account.currency.code }}) - Detaylar</h4>
-        <div class="d-inline"><strong>Mevcut Bakiye:</strong></div>
-        <div class="d-inline {% if object.current_balance < 0 %}text-danger{% endif %}"> {{ object.current_balance }} {{ object.currency.symbol }}</div>
-    <br>
-    <br>
-
-  <div class="d-flex justify-content-between align-items-center">
-    <h4 class="p-2">İşlemler</h4>
+    <div class="d-flex justify-content-between align-items-center">
+    <h4 class="p-2">Hesap İşlemleri</h4>
     <a href="{% url 'transaction_create' %}" class="btn btn-outline-success btn-sm">Ekle &nbsp;
     <i class="fa fa-plus-circle" aria-hidden="true"></i></a>
   </div>
-    <hr>
-
+    <br>
   <table class="table table-hover table-bordered">
       <thead class="table-light text-center">
           <tr>
@@ -433,7 +469,7 @@ File Path: ../budgecument/templates/bank_accounts/bank_account_detail.html
               <th scope="col">Hedef Hesap</th>
               <th scope="col">Açıklama</th>
               <th scope="col">Tutar</th>
-              <th scope="col" class="col-sm-2">Detaylar</th>
+              <th scope="col" class="col-sm-1">Detaylar</th>
           </tr>
       </thead>
       <tbody>
@@ -448,12 +484,19 @@ File Path: ../budgecument/templates/bank_accounts/bank_account_detail.html
               <td>{{ transaction.description }}</td>
               <td class="{% if transaction.get_transaction_type_display == 'Giden' %}text-danger{% endif %}">{% if transaction.get_transaction_type_display == "Giden" %}-{{ transaction.amount }}{{ transaction.source_account.currency.symbol }}{% else %}{{ transaction.amount }}{{ transaction.source_account.currency.symbol }}{% endif %}</td>
               <td>
-                  <a class="btn btn-primary btn-sm" href="{% url 'transaction_detail' transaction_uid=transaction.uid %}">
-                      <i class="fa fa-eye" aria-hidden="true"></i></a>
+<!--                  gerekli değil şimdilik dursun-->
+<!--                  <a class="btn btn-primary btn-sm" href="{% url 'transaction_detail' transaction_uid=transaction.uid %}">-->
+<!--                      <i class="fa fa-eye" aria-hidden="true"></i></a>-->
                   <a class="btn btn-success btn-sm" href="{% url 'transaction_update' transaction_uid=transaction.uid %}">
                       <i class="fa fa-pencil-square-o" aria-hidden="true"></i></a>
-                  <a class="btn btn-danger btn-sm" href="{% url 'transaction_delete' transaction_uid=transaction.uid %}">
-                      <i class="fa fa-trash" aria-hidden="true"></i></a>
+
+                  
+                  <a href="#" class="btn btn-danger btn-sm" onclick="showModal('{{ transaction.uid }}',
+                                                                        'Bu işlemi silmek istediğinize emin misiniz?',
+                                                                         '{% url 'transaction_delete' transaction_uid=transaction.uid %}')">
+                        <i class="fa fa-trash" aria-hidden="true"></i>
+                    </a>
+
               </td>
           </tr>
           {% endfor %}
@@ -464,9 +507,36 @@ File Path: ../budgecument/templates/bank_accounts/bank_account_detail.html
         {% endif %}
       </tbody>
   </table>
+</div>
 
-  <a href="{% url 'bank_account_list' %}" class="btn btn-secondary w-40 btn-block p-2">Geri Dön &nbsp;
-    <i class="fa fa-arrow-circle-left" aria-hidden="true"></i></a>
+{% endblock %}
+
+
+
+#####################################################
+
+File Name: transaction_detail.html
+File Path: ../budgecument/templates/transactions/transaction_detail.html
+
+<!--gerekli değil şimdilik dursun-->
+
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Budgecument - İşlem Detayı{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h3>İşlem Detayı</h3>
+    <ul>
+        <li><strong>Tarih:</strong> {{ transaction.date }}</li>
+        <li><strong>İşlem Türü:</strong> {{ transaction.get_transaction_type_display }}</li>
+        <li><strong>Kaynak Hesap:</strong> {{ transaction.source_account }}</li>
+        <li><strong>Hedef Hesap:</strong> {{ transaction.destination_account|default:"-" }}</li>
+        <li><strong>Açıklama:</strong> {{ transaction.description }}</li>
+        <li><strong>Tutar:</strong> {{ transaction.amount }}</li>
+    </ul>
+    <a href="{% url 'transaction_list' %}" class="btn btn-secondary">Geri Dön</a>
 </div>
 {% endblock %}
 
@@ -475,61 +545,214 @@ File Path: ../budgecument/templates/bank_accounts/bank_account_detail.html
 
 #####################################################
 
-File Name: bank_account_list.html
-File Path: ../budgecument/templates/bank_accounts/bank_account_list.html
+File Name: transaction_form.html
+File Path: ../budgecument/templates/transactions/transaction_form.html
 
 {% extends "base.html" %}
+{% block title %}Budgecument - Yeni Hesap İşlemi {% endblock %}
 {% load crispy_forms_tags %}
 
-{% block title %}Budgecument - Banka Hesapları{% endblock %}
-
 {% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center">
-        <h4 class="p-2">Banka Hesapları</h4>
-        <a href="{% url 'bank_account_create' %}" class="btn btn-outline-success btn-sm">Ekle &nbsp;
-        <i class="fa fa-plus-circle" aria-hidden="true"></i></a>
+<div class="container col-md-6 bg-light shadow-md p-3 form-layout">
+  <h3>{% if object %}İşlemi Düzenle{% else %}Yeni İşlem{% endif %}</h3>
+  <form method="post" autocomplete="off">
+    {% csrf_token %}
+
+    {{ form.date.label_tag }}
+    {{ form.date }}
+    <br>
+
+    {{ form.transaction_type.label_tag }}
+    {{ form.transaction_type }}
+    <br>
+    {{ form.source_account.label_tag }}
+    {{ form.source_account }}
+    <br>
+
+    <div id="destination_account_field" style="display: none;">
+      {{ form.destination_account.label_tag }}
+      {{ form.destination_account }}
     </div>
     <br>
 
-    {% if grouped_accounts %}
-        {% for bank, accounts in grouped_accounts %}
-            <div class="card mb-3" style="background-color: {{ bank.color }}">
-                <div class="card-header">
-                    {{ bank.name }}
-                </div>
-                <ul class="list-group list-group-flush">
-                    {% for account in accounts %}
-                        <li class="list-group-item">
-                            <div class="row">
-                                <div class="col-sm-1 text-center">{{ forloop.counter }}</div>
-                                <div class="col-sm-5">{{ account.name }} ({{ account.currency.code }})</div>
-                                <div class="col-sm-3 text-center {% if account.current_balance < 0 %}text-danger{% endif %}">
-                                    {{ account.current_balance }} {{ account.currency.symbol }}
-                                </div>
-                                <div class="col-sm-3 text-center">
-                                    <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=account.uid %}">
-                                        <i class="fa fa-eye" aria-hidden="true"></i>
-                                    </a>
-                                    <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=account.uid %}">
-                                        <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
-                                    </a>
-                                    <a href="#" class="btn btn-danger btn-sm" onclick="showModal('{{ account.uid }}',
-                                                                        'Bu banka hesabını silmek istediğinize emin misiniz?',
-                                                                         '{% url 'bank_account_delete' uid=account.uid %}')">
-                                        <i class="fa fa-trash" aria-hidden="true"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>Banka hesabı bulunamadı.</p>
-    {% endif %}
+    {{ form.description.label_tag }}
+    {{ form.description }}
+    <br>
+    {{ form.amount.label_tag }}
+    {{ form.amount }}
+    <br>
+
+    <button type="submit" class="btn btn-success w-40 btn-block p-2">Kaydet &nbsp;
+      <i class="fa fa-floppy-o" aria-hidden="true"></i></button>
+    <a href="{% url 'transaction_list' %}" class="btn btn-secondary w-40 btn-block p-2">Geri Dön &nbsp;
+      <i class="fa fa-arrow-circle-left" aria-hidden="true"></i></a>
+  </form>
 </div>
 {% endblock %}
 
+
+
+#####################################################
+
+File Name: css/styles.css
+File Path: ../budgecument/static/css/styles.css
+
+.message.error {
+    color : red;
+}
+
+.message.success {
+    color: green;
+}
+
+
+
+
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0,0,0);
+    background-color: rgba(0,0,0,0.4);
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+
+
+
+
+#####################################################
+
+File Name: js/app.js
+File Path: ../budgecument/static/js/app.js
+
+// Modal
+function showModal(uid, modalTextContent, deleteUrl) {
+    var modal = document.getElementById('deleteModal');
+    var modalText = document.getElementById('modalText');
+    var deleteForm = document.getElementById('deleteForm');
+    var deleteUid = document.getElementById('deleteUid');
+
+    modal.style.display = "block";
+    modalText.textContent = modalTextContent;
+    deleteForm.action = deleteUrl;  // Set the form action URL
+    deleteUid.value = uid;  // Set the value of hidden input to the bank account uid
+}
+
+function closeModal() {
+    var modal = document.getElementById('deleteModal');
+    modal.style.display = "none";
+}
+
+window.onclick = function(event) {
+    var modal = document.getElementById('deleteModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+};
+
+
+
+#####################################################
+
+File Name: base.html
+File Path: ../budgecument/templates/base.html
+
+{% load static %}
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Select2 CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <!-- Font -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
+
+
+</head>
+<body>
+        <!-- NavBar -->
+        {% include 'navbar.html' %}
+        <br>
+
+        <!-- Messages -->
+        {% for message in messages %}
+            <div class="message {{message.tags}} text-center">
+                {{message}}
+            </div>
+        {% endfor %}
+
+        <!-- Content -->
+        {% block content %}
+        <!-- Default content -->
+        {% endblock %}
+
+        <!-- Footer -->
+        {% include 'footer.html' %}
+
+        <!-- Modal -->
+        <div id="deleteModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <p id="modalText"></p>
+                <form id="deleteForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="uid" id="deleteUid">
+                    <button type="submit" class="btn btn-danger">Evet</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hayır</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bootstrap -->
+        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+        <!-- jQuery -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <!-- Select2 JS -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+        <!-- Custom JS -->
+        <script src="{% static 'js/app.js' %}"></script>
+
+</body>
+</html>
 

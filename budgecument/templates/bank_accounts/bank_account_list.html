@@ -20,28 +20,36 @@
                 </div>
                 <ul class="list-group list-group-flush">
                     {% for account in accounts %}
-                        <li class="list-group-item">
-                            <div class="row">
-                                <div class="col-sm-1 text-center">{{ forloop.counter }}</div>
-                                <div class="col-sm-5">{{ account.name }} ({{ account.currency.code }})</div>
-                                <div class="col-sm-3 text-center {% if account.current_balance < 0 %}text-danger{% endif %}">
-                                    {{ account.current_balance }} {{ account.currency.symbol }}
+                            <li class="list-group-item">
+                                <div class="row">
+                                    <div class="col-sm-1 text-center">{{ forloop.counter }}</div>
+                                    <div class="col-sm-5">{{ account.name }} ({{ account.currency.code }})</div>
+                                    <div class="col-sm-3 text-center {% if account.current_balance < 0 %}text-danger{% endif %}">
+                                        {{ account.current_balance }} {{ account.currency.symbol }}
+                                    </div>
+                                    <div class="col-sm-3 text-center">
+
+                                        <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=account.uid %}">
+                                            <i class="fa fa-eye" aria-hidden="true"></i>
+                                        </a>
+
+                                        <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=account.uid %}">
+                                            <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
+                                        </a>
+
+                                        <a href="#"
+                                           class="btn btn-danger btn-sm {% if account.current_balance != 0 or account.has_transactions %}disabled{% endif %}"
+                                           tabindex="-1"
+                                           onclick="showModal('{{ account.uid }}',
+                                                              'Bu banka hesabını silmek istediğinize emin misiniz?',
+                                                              '{% url 'bank_account_delete' uid=account.uid %}')">
+                                            <i class="fa fa-trash" aria-hidden="true"></i>
+                                        </a>
+
+                                    </div>
                                 </div>
-                                <div class="col-sm-3 text-center">
-                                    <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=account.uid %}">
-                                        <i class="fa fa-eye" aria-hidden="true"></i>
-                                    </a>
-                                    <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=account.uid %}">
-                                        <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
-                                    </a>
-                                    <a href="#" class="btn btn-danger btn-sm" onclick="showModal('{{ account.uid }}',
-                                                                        'Bu banka hesabını silmek istediğinize emin misiniz?',
-                                                                         '{% url 'bank_account_delete' uid=account.uid %}')">
-                                        <i class="fa fa-trash" aria-hidden="true"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </li>
+                            </li>
+
                     {% endfor %}
                 </ul>
             </div>

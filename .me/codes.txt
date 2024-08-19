@@ -1,0 +1,30 @@
+pip freeze>requirements.txt
+pip install -r requirements.txt
+
+# fixtures içerisindeki dataları sql kaydetmek
+python manage.py loaddata fixtures/initial_data.json
+
+
+
+
+
+
+
+
+
+
+---POSTGRES--
+
+-- PostgreSQL veritabanına bağlanın
+psql -U postgres
+
+
+DROP DATABASE db;
+CREATE DATABASE db_db;
+GRANT ALL PRIVILEGES ON DATABASE db_db TO postgres;
+
+
+
+
+-- Database backup
+pg_dump -U postgres -d db > db_backup.sql

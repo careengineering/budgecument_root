@@ -9,6 +9,9 @@ urlpatterns = [
     path('edit/<uuid:uid>/', views.BankAccountUpdateView.as_view(), name='bank_account_edit'),
     path('delete/<uuid:uid>/', views.BankAccountDeleteView.as_view(), name='bank_account_delete'),
 
+    # Inactive Bank Account URL
+    path('inactive/', views.InactiveBankAccountListView.as_view(), name='inactive_bank_account_list'),
+
     # Transaction URL
     path('transactions/', views.TransactionListView.as_view(), name='transaction_list'),
     path('transactions/new/', views.TransactionCreateView.as_view(), name='transaction_create'),

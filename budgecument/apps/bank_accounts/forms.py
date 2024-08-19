@@ -1,17 +1,42 @@
 from django import forms
-from .models import BankAccount, Transaction
+from django.db.models import Q
 
+from .models import BankAccount, Transaction
 
 class BankAccountForm(forms.ModelForm):
     class Meta:
         model = BankAccount
-        fields = ['name', 'bank', 'currency', 'current_balance']
+        fields = ['name', 'bank', 'currency', 'current_balance', 'is_active']
+        labels = {
+            'name': 'Hesap Adı',
+            'bank': 'Banka Adı',
+            'currency': 'Para Birimi',
+            'current_balance': 'Mevcut Bakiye',
+            'is_active': 'Aktif',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(BankAccountForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:  # Check if instance has a primary key
+            if self.instance.current_balance != 0:
+                self.fields['is_active'].disabled = True
+            if self.instance.current_balance != 0 or self.instance.has_transactions:
+                self.fields['bank'].disabled = True
+                self.fields['currency'].disabled = True
+                self.fields['current_balance'].disabled = True
+            for field in self.fields:
+                if field not in ['name', 'is_active']:
+                    self.fields[field].disabled = True
+
+
+
 
 
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
         fields = ['transaction_type', 'source_account', 'destination_account', 'description', 'amount','date']
+
         widgets = {
             'transaction_type': forms.Select(attrs={'class': 'form-control', 'id': 'id_transaction_type'}),
             'source_account': forms.Select(attrs={'class': 'form-control', 'id': 'id_source_account'}),

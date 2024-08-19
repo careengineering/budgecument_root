@@ -10,3 +10,8 @@ from apps.common.models import AccountHolder
 for user in User.objects.all():
     if not hasattr(user, 'accountholder'):
         AccountHolder.objects.create(user=user)
+
+
+
+
+

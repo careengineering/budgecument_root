@@ -1,12 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from .models import BankAccount, Transaction
-from .forms import TransactionForm
+from .forms import TransactionForm,BankAccountForm
 
 from itertools import groupby
 from operator import itemgetter
@@ -20,8 +21,7 @@ class BankAccountListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         account_holder = self.request.user.accountholder
-        queryset = BankAccount.objects.filter(account_holder=account_holder).order_by('bank__name')
-        return queryset
+        return BankAccount.objects.filter(account_holder=account_holder, is_active=True).order_by('bank__name')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -56,7 +56,7 @@ class BankAccountDetailView(LoginRequiredMixin, DetailView):
 
 class BankAccountCreateView(LoginRequiredMixin, CreateView):
     model = BankAccount
-    fields = ['name', 'bank', 'currency', 'current_balance']
+    form_class = BankAccountForm
     template_name = 'bank_accounts/bank_account_form.html'
     success_url = reverse_lazy('bank_account_list')
 
@@ -67,14 +67,17 @@ class BankAccountCreateView(LoginRequiredMixin, CreateView):
 
 class BankAccountUpdateView(LoginRequiredMixin, UpdateView):
     model = BankAccount
-    fields = ['name', 'bank', 'currency', 'current_balance']
+    form_class = BankAccountForm
     template_name = 'bank_accounts/bank_account_form.html'
     success_url = reverse_lazy('bank_account_list')
+
+    def form_valid(self, form):
+        form.instance.account_holder = self.request.user.accountholder
+        return super().form_valid(form)
 
     def get_object(self):
         uid = self.kwargs.get('uid')
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
-
 
 
 class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
@@ -83,9 +86,31 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy('bank_account_list')
     pk_url_kwarg = 'uid'
 
+    def form_valid(self, form):
+        try:
+            self.object.delete()
+            messages.success(self.request, "Hesap başarıyla silindi.")
+            return HttpResponseRedirect(self.success_url)
+        except ValidationError as e:
+            messages.error(self.request, e.message)
+            return redirect(self.request.META.get('HTTP_REFERER'))
+
     def get_object(self, queryset=None):
         uid = self.kwargs.get(self.pk_url_kwarg)
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
+
+
+class InactiveBankAccountListView(LoginRequiredMixin, ListView):
+    model = BankAccount
+    template_name = 'bank_accounts/inactive_bank_account_list.html'
+    context_object_name = 'inactive_bank_accounts'
+
+    def get_queryset(self):
+        account_holder = self.request.user.accountholder
+        queryset = BankAccount.objects.filter(account_holder=account_holder, is_active=False).order_by('bank__name')
+        return queryset
+
+
 
 
 

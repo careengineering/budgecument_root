@@ -7,7 +7,6 @@ import datetime
 import uuid
 
 
-####################################################################################
 # - Bank Account
 class BankAccount(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -16,16 +15,33 @@ class BankAccount(models.Model):
     account_holder = models.ForeignKey(AccountHolder, on_delete=models.CASCADE)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
     current_balance = models.DecimalField(max_digits=100, decimal_places=2, default=0.00)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.bank} {self.name} - {self.currency.code}"
+
+    def delete(self, *args, **kwargs):
+        if self.current_balance != 0:
+            raise ValidationError("Hesap silinemez. Mevcut bakiye sıfır değil.")
+        super().delete(*args, **kwargs)
 
     class Meta:
         verbose_name = "Banka Hesabı"
         verbose_name_plural = "Banka Hesapları"
 
+    @property
+    def has_transactions(self):
+        return Transaction.objects.filter(source_account=self).exists() or Transaction.objects.filter(destination_account=self).exists()
 
-####################################################################################
+
+
+
+
+
+
+
+
+
 # - Transaction
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
