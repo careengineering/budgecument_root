@@ -48,7 +48,13 @@ class TransactionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(TransactionForm, self).__init__(*args, **kwargs)
-        self.fields['destination_account'].queryset = BankAccount.objects.none()  # Initially empty queryset
+        user = kwargs.get('initial', {}).get('user', None)
+        if user:
+            # List Only is_active true and account holders account
+            self.fields['source_account'].queryset = BankAccount.objects.filter(
+                account_holder=user.accountholder, is_active=True)
+            self.fields['destination_account'].queryset = BankAccount.objects.filter(
+                account_holder=user.accountholder, is_active=True)
 
 
 

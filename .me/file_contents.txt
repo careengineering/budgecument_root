@@ -1,15 +1,12 @@
-transaction_list.html sayfasında yeni işlem eklenirken;
-- source_account veya destination_account is_active=false ise gösterilmesin
-- source_account veya source_account listelerinde sadece hesap sahibine ait hesaplar görünsün
-- transaction_type giden seçildi ve source_account sıfır veya sıfırdan küçükse giden listenin altında bu bilgi uyarı
-olarak görünsün ama işleme izin versin
-- source_account ve destination_account listelerinde current_balance tutarıda görünsün
-- transaction_type transfer seçildi ise source_account currency_code ile aynı para birimine sahip destination_account
-listesi görünsün.
+Aşağıda dosya ad ,dosya uzantısı ve içeriklerinin son halini paylaştım. öncelikle kod içeriklerini inceler misin?
 
+yeni hesap işlemi ekleme senaryonu şöyle olsun;
+- sayfa açılınca sadece Tarih ve Transaction type ve geri dön tuşu görünür durumdadır.
+- Gelen veya Giden seçilirse Source account, Description, Amount alanları ve kaydet düğmesi görünür hale gelir.
+- Transfer seçilirse Source account görünür. source account seçildikten sonra bu hesabın currency code kontrol edilir ve
+ aynı currency code sahip destination account listesi Description, Amount alanları ve kaydet düğmesi görünür hale gelir.
 
-
-
+buna göre değiştirmem gereken yerleri gösterir misin?
 
 
 #####################################################
@@ -37,7 +34,7 @@ class BankAccount(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.bank} {self.name} - {self.currency.code}"
+        return f"{self.bank} {self.name} - {self.currency.code} (Bakiye: {self.current_balance} {self.currency.symbol} )"
 
     def delete(self, *args, **kwargs):
         if self.current_balance != 0:
@@ -158,7 +155,13 @@ class TransactionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(TransactionForm, self).__init__(*args, **kwargs)
-        self.fields['destination_account'].queryset = BankAccount.objects.none()  # Initially empty queryset
+        user = kwargs.get('initial', {}).get('user', None)
+        if user:
+            # List Only is_active true and account holders account
+            self.fields['source_account'].queryset = BankAccount.objects.filter(
+                account_holder=user.accountholder, is_active=True)
+            self.fields['destination_account'].queryset = BankAccount.objects.filter(
+                account_holder=user.accountholder, is_active=True)
 
 
 
@@ -316,13 +319,10 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
     template_name = 'transactions/transaction_form.html'
     success_url = reverse_lazy('transaction_list')
 
-    def get_form(self, form_class=None):
-        form = super(TransactionCreateView, self).get_form(form_class)
-        form.fields['source_account'].queryset = BankAccount.objects.filter(
-            account_holder=self.request.user.accountholder)
-        form.fields['destination_account'].queryset = BankAccount.objects.filter(
-            account_holder=self.request.user.accountholder)
-        return form
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({'initial': {'user': self.request.user}})
+        return kwargs
 
     def form_valid(self, form):
         form.instance.source_account = form.cleaned_data['source_account']
@@ -679,6 +679,9 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 };
+
+
+
 
 
 
