@@ -12,6 +12,7 @@ for user in User.objects.all():
         AccountHolder.objects.create(user=user)
 
 
-
+pip freeze>requirements.txt
+pip install -r requirements.txt
 
 
