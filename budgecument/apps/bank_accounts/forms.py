@@ -35,7 +35,15 @@ class BankAccountForm(forms.ModelForm):
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['transaction_type', 'source_account', 'destination_account', 'description', 'amount','date']
+        fields = ['transaction_type', 'source_account', 'destination_account', 'description', 'amount', 'date']
+        labels = {
+            'transaction_type': 'İşlem Türü',
+            'source_account': 'Kaynak Hesap Adı',
+            'destination_account': 'Hedef Hesap Adı',
+            'description': 'Açıklama',
+            'amount': 'Tutar',
+            'date': 'Tarih',
+        }
 
         widgets = {
             'transaction_type': forms.Select(attrs={'class': 'form-control', 'id': 'id_transaction_type'}),
@@ -49,12 +57,28 @@ class TransactionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(TransactionForm, self).__init__(*args, **kwargs)
         user = kwargs.get('initial', {}).get('user', None)
+        
         if user:
-            # List Only is_active true and account holders account
+            # Sadece aktif olan ve kullanıcının bağlı olduğu hesapları listele
             self.fields['source_account'].queryset = BankAccount.objects.filter(
-                account_holder=user.accountholder, is_active=True)
+                account_holder=user.accountholder, is_active=True
+            )
             self.fields['destination_account'].queryset = BankAccount.objects.filter(
-                account_holder=user.accountholder, is_active=True)
+                account_holder=user.accountholder, is_active=True
+            )
+        
+        # 'destination_account' yalnızca 'transfer' işlem türü seçildiğinde görünür olmalı
+        self.fields['destination_account'].required = False  # Başlangıçta zorunlu değil
+        self.fields['destination_account'].widget.attrs['disabled'] = True  # Başlangıçta devre dışı
+        
+        if 'transaction_type' in self.data:
+            transaction_type = self.data.get('transaction_type')
+            if transaction_type == 'transfer':
+                self.fields['destination_account'].widget.attrs['disabled'] = False  # 'transfer' seçildiğinde aktif et
+                self.fields['destination_account'].required = True  # 'destination_account' zorunlu hale gelir
+        elif self.instance.pk and self.instance.transaction_type == 'transfer':
+            self.fields['destination_account'].widget.attrs['disabled'] = False  # Mevcut işlem 'transfer' ise aktif et
+            self.fields['destination_account'].required = True  # 'destination_account' zorunlu hale gelir
 
 
 

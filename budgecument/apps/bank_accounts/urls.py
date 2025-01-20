@@ -1,5 +1,8 @@
 from django.urls import path
 from . import views
+from .views import(
+    get_destination_accounts,
+    )
 
 urlpatterns = [
     # Bank Account URL
@@ -9,13 +12,11 @@ urlpatterns = [
     path('edit/<uuid:uid>/', views.BankAccountUpdateView.as_view(), name='bank_account_edit'),
     path('delete/<uuid:uid>/', views.BankAccountDeleteView.as_view(), name='bank_account_delete'),
 
-    # Inactive Bank Account URL
-    path('inactive/', views.InactiveBankAccountListView.as_view(), name='inactive_bank_account_list'),
-
     # Transaction URL
     path('transactions/', views.TransactionListView.as_view(), name='transaction_list'),
     path('transactions/new/', views.TransactionCreateView.as_view(), name='transaction_create'),
     path('transactions/<uuid:transaction_uid>/', views.TransactionDetailView.as_view(), name='transaction_detail'),
     path('transactions/update/<uuid:transaction_uid>/', views.TransactionUpdateView.as_view(), name='transaction_update'),
     path('transactions/delete/<uuid:transaction_uid>/', views.TransactionDeleteView.as_view(), name='transaction_delete'),
+    path('get_destination_accounts/<int:source_account_id>/', get_destination_accounts, name='get_destination_accounts'),
 ]

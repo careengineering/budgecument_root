@@ -8,29 +8,48 @@
   <form method="post" autocomplete="off">
     {% csrf_token %}
 
-    {{ form.date.label_tag }}
-    {{ form.date }}
-    <br>
+    <!-- Date -->
+    <div class="form-group">
+      {{ form.date.label_tag }}
+      {{ form.date }}
+    </div>
 
-    {{ form.transaction_type.label_tag }}
-    {{ form.transaction_type }}
-    <br>
-    {{ form.source_account.label_tag }}
-    {{ form.source_account }}
-    <br>
+    <!-- Transaction Type -->
+    <div class="form-group">
+      {{ form.transaction_type.label_tag }}
+      {{ form.transaction_type }}
+    </div>
 
+    <!-- Source Account -->
+    <div class="form-group">
+      {{ form.source_account.label_tag }}
+      {{ form.source_account }}
+    </div>
+
+    <!-- Destination Account (Initially hidden) -->
     <div id="destination_account_field" style="display: none;">
       {{ form.destination_account.label_tag }}
-      {{ form.destination_account }}
+      <select id="id_destination_account">
+        {% for account in form.destination_account.field.queryset %}
+          <option value="{{ account.id }}" data-currency="{{ account.currency }}" {% if account.id == form.destination_account.value %}selected{% endif %}>
+            {{ account }} - {{ account.currency }}
+          </option>
+        {% endfor %}
+      </select>
     </div>
     <br>
 
-    {{ form.description.label_tag }}
-    {{ form.description }}
-    <br>
-    {{ form.amount.label_tag }}
-    {{ form.amount }}
-    <br>
+    <!-- Description -->
+    <div class="form-group">
+      {{ form.description.label_tag }}
+      {{ form.description }}
+    </div>
+
+    <!-- Amount -->
+    <div class="form-group">
+      {{ form.amount.label_tag }}
+      {{ form.amount }}
+    </div>
 
     <button type="submit" class="btn btn-success w-40 btn-block p-2">Kaydet &nbsp;
       <i class="fa fa-floppy-o" aria-hidden="true"></i></button>
@@ -38,4 +57,5 @@
       <i class="fa fa-arrow-circle-left" aria-hidden="true"></i></a>
   </form>
 </div>
+
 {% endblock %}

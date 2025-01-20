@@ -61,17 +61,25 @@ class Transaction(models.Model):
     amount_after_transaction = models.DecimalField(max_digits=100, decimal_places=2)
 
     def save(self, *args, **kwargs):
+        # Eğer işlem türü 'deposit' (gelen) ise, kaynak hesap bakiyesi artırılır
         if self.transaction_type == 'deposit':
             self.source_account.current_balance += self.amount
+        # Eğer işlem türü 'withdraw' (giden) ise, kaynak hesap bakiyesi azaltılır
         elif self.transaction_type == 'withdraw':
             self.source_account.current_balance -= self.amount
+        # Eğer işlem türü 'transfer' (transfer) ise, kaynak ve hedef hesap bakiyeleri güncellenir
         elif self.transaction_type == 'transfer':
             if self.destination_account:
                 self.source_account.current_balance -= self.amount
                 self.destination_account.current_balance += self.amount
                 self.destination_account.save()
+        
         self.amount_after_transaction = self.source_account.current_balance
+
+        # Kaynak hesap bakiyesi güncellenir
         self.source_account.save()
+
+        # Veritabanına kaydetme işlemi yapılır
         super(Transaction, self).save(*args, **kwargs)
 
     def __str__(self):
