@@ -5,6 +5,7 @@ File Path: ../budgecument_root/budgecument/apps/bank_accounts/models.py
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 from ..common.models import AccountHolder, Currency, BankName, OtherHolder
 
@@ -12,14 +13,18 @@ import datetime
 import uuid
 
 
+
+
+
+
 # - Bank Account
 class BankAccount(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=100)
     bank = models.ForeignKey(BankName, on_delete=models.CASCADE)
     account_holder = models.ForeignKey(AccountHolder, on_delete=models.CASCADE)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    current_balance = models.DecimalField(max_digits=100, decimal_places=2, default=0.00)
+    current_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -39,14 +44,6 @@ class BankAccount(models.Model):
         return Transaction.objects.filter(source_account=self).exists() or Transaction.objects.filter(destination_account=self).exists()
 
 
-
-
-
-
-
-
-
-
 # - Transaction
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
@@ -60,23 +57,33 @@ class Transaction(models.Model):
     destination_account = models.ForeignKey(BankAccount, related_name='received_transactions', on_delete=models.CASCADE,
                                             null=True, blank=True)
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
-    description = models.CharField(max_length=255)
-    date = models.DateTimeField(default=datetime.datetime.now)
-    amount = models.DecimalField(max_digits=100, decimal_places=2)
-    amount_after_transaction = models.DecimalField(max_digits=100, decimal_places=2)
+    description = models.CharField(max_length=200)
+    date = models.DateTimeField(default=timezone.now)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount_after_transaction = models.DecimalField(max_digits=10, decimal_places=2)
 
     def save(self, *args, **kwargs):
+        if self.transaction_type == 'withdraw' and self.source_account.current_balance < self.amount:
+            raise ValidationError("Yetersiz bakiye.")
+        # Eğer işlem türü 'deposit' (gelen) ise, kaynak hesap bakiyesi artırılır
         if self.transaction_type == 'deposit':
             self.source_account.current_balance += self.amount
+        # Eğer işlem türü 'withdraw' (giden) ise, kaynak hesap bakiyesi azaltılır
         elif self.transaction_type == 'withdraw':
             self.source_account.current_balance -= self.amount
+        # Eğer işlem türü 'transfer' (transfer) ise, kaynak ve hedef hesap bakiyeleri güncellenir
         elif self.transaction_type == 'transfer':
             if self.destination_account:
                 self.source_account.current_balance -= self.amount
                 self.destination_account.current_balance += self.amount
                 self.destination_account.save()
+        
         self.amount_after_transaction = self.source_account.current_balance
+
+        # Kaynak hesap bakiyesi güncellenir
         self.source_account.save()
+
+        # Veritabanına kaydetme işlemi yapılır
         super(Transaction, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -96,7 +103,6 @@ File Path: ../budgecument_root/budgecument/apps/bank_accounts/forms.py
 
 from django import forms
 from django.db.models import Q
-
 from .models import BankAccount, Transaction
 
 class BankAccountForm(forms.ModelForm):
@@ -114,48 +120,58 @@ class BankAccountForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(BankAccountForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:  # Check if instance has a primary key
-            if self.instance.current_balance != 0:
-                self.fields['is_active'].disabled = True
-            if self.instance.current_balance != 0 or self.instance.has_transactions:
-                self.fields['bank'].disabled = True
-                self.fields['currency'].disabled = True
-                self.fields['current_balance'].disabled = True
-            for field in self.fields:
-                if field not in ['name', 'is_active']:
-                    self.fields[field].disabled = True
+            self.disable_fields_based_on_balance()
 
-
-
+    def disable_fields_based_on_balance(self):
+        if self.instance.current_balance != 0:
+            self.fields['is_active'].disabled = True
+        if self.instance.current_balance != 0 or self.instance.has_transactions:
+            self.fields['bank'].disabled = True
+            self.fields['currency'].disabled = True
+            self.fields['current_balance'].disabled = True
+        for field in self.fields:
+            if field not in ['name', 'is_active']:
+                self.fields[field].disabled = True
 
 
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['transaction_type', 'source_account', 'destination_account', 'description', 'amount','date']
+        fields = ['transaction_type', 'source_account', 'destination_account', 'description', 'amount', 'date']
+        labels = {
+            'transaction_type': 'İşlem Türü',
+            'source_account': 'Kaynak Hesap Adı',
+            'destination_account': 'Hedef Hesap Adı',
+            'description': 'Açıklama',
+            'amount': 'Tutar',
+            'date': 'Tarih',
+        }
 
         widgets = {
             'transaction_type': forms.Select(attrs={'class': 'form-control', 'id': 'id_transaction_type'}),
             'source_account': forms.Select(attrs={'class': 'form-control', 'id': 'id_source_account'}),
             'destination_account': forms.Select(attrs={'class': 'form-control', 'id': 'id_destination_account'}),
-            'description': forms.TextInput(attrs={'class': 'form-control'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-control'}),
-            'date': forms.DateInput(attrs={'class': 'form-control'}),
+            'description': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Açıklama girin'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Tutar girin'}),
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'Tarih seçin'}),
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super(TransactionForm, self).__init__(*args, **kwargs)
-        user = kwargs.get('initial', {}).get('user', None)
+        
         if user:
-            # List Only is_active true and account holders account
+            # Sadece aktif olan ve kullanıcının bağlı olduğu hesapları listele
             self.fields['source_account'].queryset = BankAccount.objects.filter(
-                account_holder=user.accountholder, is_active=True)
-            self.fields['destination_account'].queryset = BankAccount.objects.filter(
-                account_holder=user.accountholder, is_active=True)
+                account_holder=user.accountholder, is_active=True
+            )
+            self.fields['destination_account'].queryset = BankAccount.objects.none()  # Başlangıçta boş
 
-
-
-
-
+    def clean_amount(self):
+        amount = self.cleaned_data.get('amount')
+        if amount <= 0:
+            raise forms.ValidationError("Tutar pozitif bir değer olmalıdır.")
+        return amount
 
 
 
@@ -168,6 +184,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseRedirect
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -179,6 +196,21 @@ from itertools import groupby
 from operator import itemgetter
 
 
+
+def get_destination_accounts(request, source_account_uid):
+    # Kaynak hesabı uid'ye göre bul
+    source_account = get_object_or_404(BankAccount, uid=source_account_uid)
+    
+    # Aynı para birimine sahip hesapları filtreleyin
+    destination_accounts = BankAccount.objects.filter(
+        account_holder=source_account.account_holder,
+        currency=source_account.currency,
+        is_active=True
+    ).exclude(uid=source_account_uid).values('uid', 'name', 'currency__code')
+
+    return JsonResponse(list(destination_accounts), safe=False)
+
+
 ####################################################################################
 # - Bank Account
 class BankAccountListView(LoginRequiredMixin, ListView):
@@ -187,15 +219,30 @@ class BankAccountListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         account_holder = self.request.user.accountholder
-        return BankAccount.objects.filter(account_holder=account_holder, is_active=True).order_by('bank__name')
+        return BankAccount.objects.filter(account_holder=account_holder).order_by('bank__name')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         bank_accounts = self.get_queryset()
-        grouped_accounts = []
-        for key, group in groupby(bank_accounts, key=lambda x: x.bank):
-            grouped_accounts.append((key, list(group)))
-        context['grouped_accounts'] = grouped_accounts
+
+        # Aktif ve pasif hesapları ayırıyoruz
+        active_accounts = bank_accounts.filter(is_active=True)
+        inactive_accounts = bank_accounts.filter(is_active=False)
+
+        # Aktif hesapları banka adına göre grupluyoruz
+        grouped_active_accounts = []
+        for key, group in groupby(active_accounts, key=lambda x: x.bank):
+            grouped_active_accounts.append((key, list(group)))
+
+        # Pasif hesapları banka adına göre grupluyoruz
+        grouped_inactive_accounts = []
+        for key, group in groupby(inactive_accounts, key=lambda x: x.bank):
+            grouped_inactive_accounts.append((key, list(group)))
+
+        # Context'e ekliyoruz
+        context['grouped_active_accounts'] = grouped_active_accounts
+        context['grouped_inactive_accounts'] = grouped_inactive_accounts
+        
         return context
 
 
@@ -266,16 +313,6 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
         return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
 
 
-class InactiveBankAccountListView(LoginRequiredMixin, ListView):
-    model = BankAccount
-    template_name = 'bank_accounts/inactive_bank_account_list.html'
-    context_object_name = 'inactive_bank_accounts'
-
-    def get_queryset(self):
-        account_holder = self.request.user.accountholder
-        queryset = BankAccount.objects.filter(account_holder=account_holder, is_active=False).order_by('bank__name')
-        return queryset
-
 
 
 
@@ -288,8 +325,14 @@ class TransactionListView(LoginRequiredMixin, ListView):
     context_object_name = 'transactions'
 
     def get_queryset(self):
-        return Transaction.objects.filter(source_account__account_holder=self.request.user.accountholder)
-
+        # Source ve destination hesapların account_holder'ını kontrol et
+        return Transaction.objects.filter(
+            source_account__account_holder=self.request.user.accountholder
+        ).union(
+            Transaction.objects.filter(
+                destination_account__account_holder=self.request.user.accountholder
+            )
+        )
 
 class TransactionDetailView(LoginRequiredMixin, DetailView):
     model = Transaction
@@ -308,23 +351,26 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
     template_name = 'transactions/transaction_form.html'
     success_url = reverse_lazy('transaction_list')
 
-    def get_form(self, form_class=None):
-        form = super(TransactionCreateView, self).get_form(form_class)
-        form.fields['source_account'].queryset = BankAccount.objects.filter(
-            account_holder=self.request.user.accountholder)
-        form.fields['destination_account'].queryset = BankAccount.objects.filter(
-            account_holder=self.request.user.accountholder)
-        return form
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
 
     def form_valid(self, form):
-        form.instance.source_account = form.cleaned_data['source_account']
-        form.instance.transaction_type = form.cleaned_data['transaction_type']
-        form.instance.description = form.cleaned_data['description']
-        form.instance.amount = form.cleaned_data['amount']
-        form.instance.date = form.cleaned_data['date']
+        source_account = form.cleaned_data['source_account']
+        transaction_type = form.cleaned_data['transaction_type']
+        destination_account = form.cleaned_data.get('destination_account')
 
-        if form.cleaned_data['transaction_type'] == 'transfer':
-            form.instance.destination_account = form.cleaned_data['destination_account']
+        if transaction_type == 'transfer' and not destination_account:
+            form.add_error('destination_account', 'Transfer işlemi için hedef hesap seçmelisiniz.')
+            return self.form_invalid(form)
+
+        if transaction_type == 'transfer' and destination_account.currency != source_account.currency:
+            form.add_error('destination_account', 'Kaynak ve hedef hesapların para birimleri aynı olmalıdır.')
+            return self.form_invalid(form)
+
+        form.instance.source_account = source_account
+        form.instance.destination_account = destination_account if transaction_type == 'transfer' else None
 
         return super().form_valid(form)
 
@@ -339,6 +385,51 @@ class TransactionUpdateView(LoginRequiredMixin, UpdateView):
     def get_object(self):
         uid = self.kwargs.get('transaction_uid')
         return get_object_or_404(Transaction, uid=uid, source_account__account_holder=self.request.user.accountholder)
+
+    def form_valid(self, form):
+        # Eski işlem bilgilerini al
+        transaction = form.save(commit=False)
+
+        # İşlem türüne göre bakiyeleri geri al
+        if transaction.transaction_type == 'deposit':
+            transaction.source_account.current_balance -= transaction.amount
+        elif transaction.transaction_type == 'withdraw':
+            transaction.source_account.current_balance += transaction.amount
+        elif transaction.transaction_type == 'transfer':
+            transaction.source_account.current_balance += transaction.amount
+            if transaction.destination_account:
+                transaction.destination_account.current_balance -= transaction.amount
+
+        # Yeni işlem bilgileriyle güncelle
+        transaction.source_account = form.cleaned_data['source_account']
+        transaction.transaction_type = form.cleaned_data['transaction_type']
+        transaction.description = form.cleaned_data['description']
+        transaction.amount = form.cleaned_data['amount']
+        transaction.date = form.cleaned_data['date']
+
+        # Eğer transferse, destination_account'u da güncelle
+        if transaction.transaction_type == 'transfer':
+            transaction.destination_account = form.cleaned_data['destination_account']
+
+        # Yeni bakiyeleri hesapla
+        if transaction.transaction_type == 'deposit':
+            transaction.source_account.current_balance += transaction.amount
+        elif transaction.transaction_type == 'withdraw':
+            transaction.source_account.current_balance -= transaction.amount
+        elif transaction.transaction_type == 'transfer':
+            if transaction.destination_account:
+                transaction.destination_account.current_balance += transaction.amount
+
+        # Hesap bakiyelerini kaydet
+        transaction.source_account.save()
+        if transaction.transaction_type == 'transfer' and transaction.destination_account:
+            transaction.destination_account.save()
+
+        # İşlemi kaydet
+        transaction.save()
+
+        return super().form_valid(form)
+
 
 
 class TransactionDeleteView(LoginRequiredMixin, DeleteView):
@@ -366,9 +457,10 @@ class TransactionDeleteView(LoginRequiredMixin, DeleteView):
             source_account.current_balance += self.object.amount
 
             # If it's a transfer, also update the destination account's balance
-            destination_account = self.object.destination_account
-            destination_account.current_balance -= self.object.amount
-            destination_account.save()
+            if self.object.destination_account:
+                destination_account = self.object.destination_account
+                destination_account.current_balance -= self.object.amount
+                destination_account.save()
 
         source_account.save()
 
@@ -380,6 +472,7 @@ class TransactionDeleteView(LoginRequiredMixin, DeleteView):
 
 
 
+
 #####################################################
 
 File Name: urls.py
@@ -387,6 +480,7 @@ File Path: ../budgecument_root/budgecument/apps/bank_accounts/urls.py
 
 from django.urls import path
 from . import views
+from .views import get_destination_accounts
 
 urlpatterns = [
     # Bank Account URL
@@ -396,17 +490,14 @@ urlpatterns = [
     path('edit/<uuid:uid>/', views.BankAccountUpdateView.as_view(), name='bank_account_edit'),
     path('delete/<uuid:uid>/', views.BankAccountDeleteView.as_view(), name='bank_account_delete'),
 
-    # Inactive Bank Account URL
-    path('inactive/', views.InactiveBankAccountListView.as_view(), name='inactive_bank_account_list'),
-
     # Transaction URL
     path('transactions/', views.TransactionListView.as_view(), name='transaction_list'),
     path('transactions/new/', views.TransactionCreateView.as_view(), name='transaction_create'),
     path('transactions/<uuid:transaction_uid>/', views.TransactionDetailView.as_view(), name='transaction_detail'),
     path('transactions/update/<uuid:transaction_uid>/', views.TransactionUpdateView.as_view(), name='transaction_update'),
     path('transactions/delete/<uuid:transaction_uid>/', views.TransactionDeleteView.as_view(), name='transaction_delete'),
+    path('get_destination_accounts/<uuid:source_account_uid>/', get_destination_accounts, name='get_destination_accounts'),
 ]
-
 
 
 
@@ -469,59 +560,6 @@ File Path: ../budgecument_root/budgecument/templates/bank_accounts/bank_account_
   </form>
 
 
-</div>
-{% endblock %}
-
-
-
-
-#####################################################
-
-File Name: inactive_bank_account_list.html
-File Path: ../budgecument_root/budgecument/templates/bank_accounts/inactive_bank_account_list.html
-
-{% extends "base.html" %}
-{% load crispy_forms_tags %}
-
-{% block title %}Budgecument - Pasif Banka Hesapları{% endblock %}
-
-{% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center">
-        <h4 class="p-2">Pasif Banka Hesapları</h4>
-    </div>
-    <br>
-
-    {% if inactive_bank_accounts %}
-        <div class="card mb-3">
-            <div class="card-header">
-                Pasif Hesaplar
-            </div>
-            <ul class="list-group list-group-flush">
-                {% for account in inactive_bank_accounts %}
-                    <li class="list-group-item">
-                        <div class="row">
-                            <div class="col-sm-1 text-center">{{ forloop.counter }}</div>
-                            <div class="col-sm-5">{{ account.bank }} - {{ account.name }} ({{ account.currency.code}})</div>
-                            <div class="col-sm-3 text-center {% if account.current_balance < 0 %}text-danger{% endif %}">
-                                {{ account.current_balance }} {{ account.currency.symbol }}
-                            </div>
-                            <div class="col-sm-3 text-center">
-                                <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=account.uid %}">
-                                    <i class="fa fa-eye" aria-hidden="true"></i>
-                                </a>
-                                <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=account.uid %}">
-                                    <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-    {% else %}
-        <p>Aktif olmayan banka hesabı bulunamadı.</p>
-    {% endif %}
 </div>
 {% endblock %}
 
@@ -622,8 +660,9 @@ File Path: ../budgecument_root/budgecument/templates/bank_accounts/bank_account_
     </div>
     <br>
 
-    {% if grouped_accounts %}
-        {% for bank, accounts in grouped_accounts %}
+    <h5 class="p-2">Aktif Banka Hesapları</h5>
+    {% if grouped_active_accounts %}
+        {% for bank, accounts in grouped_active_accounts %}
             <div class="card mb-3" style="background-color: {{ bank.color }}">
                 <div class="card-header">
                     {{ bank.name }}
@@ -665,8 +704,59 @@ File Path: ../budgecument_root/budgecument/templates/bank_accounts/bank_account_
             </div>
         {% endfor %}
     {% else %}
-        <p>Banka hesabı bulunamadı.</p>
+        <p>Aktif banka hesabı bulunamadı.</p>
     {% endif %}
+
+<br>
+<hr> <!-- Çizgi -->
+<br>
+    <h5 class="p-2">Pasif Banka Hesapları</h5>     
+    {% if grouped_inactive_accounts %}
+        {% for bank, accounts in grouped_inactive_accounts %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    {{ bank.name }}
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for account in accounts %}
+                            <li class="list-group-item">
+                                <div class="row">
+                                    <div class="col-sm-1 text-center">{{ forloop.counter }}</div>
+                                    <div class="col-sm-5">{{ account.name }} ({{ account.currency.code }})</div>
+                                    <div class="col-sm-3 text-center {% if account.current_balance < 0 %}text-danger{% endif %}">
+                                        {{ account.current_balance }} {{ account.currency.symbol }}
+                                    </div>
+                                    <div class="col-sm-3 text-center">
+
+                                        <a class="btn btn-primary btn-sm" href="{% url 'bank_account_detail' uid=account.uid %}">
+                                            <i class="fa fa-eye" aria-hidden="true"></i>
+                                        </a>
+
+                                        <a class="btn btn-success btn-sm" href="{% url 'bank_account_edit' uid=account.uid %}">
+                                            <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
+                                        </a>
+
+                                        <a href="#"
+                                           class="btn btn-danger btn-sm {% if account.current_balance != 0 or account.has_transactions %}disabled{% endif %}"
+                                           tabindex="-1"
+                                           onclick="showModal('{{ account.uid }}',
+                                                              'Bu banka hesabını silmek istediğinize emin misiniz?',
+                                                              '{% url 'bank_account_delete' uid=account.uid %}')">
+                                            <i class="fa fa-trash" aria-hidden="true"></i>
+                                        </a>
+
+                                    </div>
+                                </div>
+                            </li>
+
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>Pasif banka hesabı bulunamadı.</p>
+    {% endif %}
+
 </div>
 {% endblock %}
 
@@ -763,4 +853,38 @@ window.onclick = function(event) {
 
 
 
+// For transfer
+$(document).ready(function() {
+    // Source account seçildiğinde tetiklenecek fonksiyon
+    $('#id_source_account').change(function() {
+        var sourceAccountUid = $(this).val(); // Seçilen source_account'un UUID'sini al
+        if (sourceAccountUid) {
+            // AJAX isteği için URL'yi oluştur
+            var url = "/bank_accounts/get_destination_accounts/" + sourceAccountUid + "/";
+            
+            // AJAX isteği ile destination_account seçeneklerini güncelle
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(data) {
+                    // Destination account seçeneklerini temizle
+                    $('#id_destination_account').empty();
+                    // Yeni seçenekleri ekle
+                    $.each(data, function(index, account) {
+                        $('#id_destination_account').append(
+                            $('<option></option>').attr('value', account.uid).text(account.name + ' (' + account.currency__code + ')')
+                        );
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX hatası:", error);
+                }
+            });
+        } else {
+            // Source account seçilmezse destination_account'u temizle
+            $('#id_destination_account').empty();
+            $('#id_destination_account').append('<option value="">Hedef hesap seçin</option>'); // Varsayılan bir seçenek ekleyin
+        }
+    });
+});
 

@@ -1,17 +1,30 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ValidationError
-from django.http import HttpResponseRedirect
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render, redirect
+from django.core.exceptions import PermissionDenied
+from django.db import transaction as db_transaction
+from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from .models import BankAccount, Transaction
-from .forms import TransactionForm,BankAccountForm
+from .forms import TransactionForm, BankAccountForm
 
-from itertools import groupby
-from operator import itemgetter
+
+
+
+def get_destination_accounts(request, source_account_uid):
+    # Kaynak hesabı uid'ye göre bul
+    source_account = get_object_or_404(BankAccount, uid=source_account_uid)
+    
+    # Aynı para birimine sahip hesapları filtreleyin
+    destination_accounts = BankAccount.objects.filter(
+        account_holder=source_account.account_holder,
+        currency=source_account.currency,
+        is_active=True
+    ).exclude(uid=source_account_uid).values('uid', 'name', 'currency__code')
+
+    return JsonResponse(list(destination_accounts), safe=False)
 
 
 ####################################################################################
@@ -104,16 +117,27 @@ class BankAccountDeleteView(LoginRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         try:
-            self.object.delete()
-            messages.success(self.request, "Hesap başarıyla silindi.")
-            return HttpResponseRedirect(self.success_url)
-        except ValidationError as e:
-            messages.error(self.request, e.message)
-            return redirect(self.request.META.get('HTTP_REFERER'))
+            with db_transaction.atomic():
+                self.object = self.get_object()
+                self.object.delete()
+                messages.success(self.request, "Hesap başarıyla silindi.")
+        except PermissionDenied as e:
+            messages.error(self.request, str(e))
+            return redirect(self.object.get_absolute_url())
+        except Exception as e:
+            messages.error(self.request, f"Bir hata oluştu: {str(e)}")
+            return redirect(self.object.get_absolute_url())
+            
+        return HttpResponseRedirect(self.success_url)
 
     def get_object(self, queryset=None):
         uid = self.kwargs.get(self.pk_url_kwarg)
-        return get_object_or_404(BankAccount, uid=uid, account_holder=self.request.user.accountholder)
+        return get_object_or_404(
+            BankAccount,
+            uid=uid,
+            account_holder=getattr(self.request.user, 'accountholder', None)
+        )
+
 
 
 
@@ -126,27 +150,19 @@ class TransactionListView(LoginRequiredMixin, ListView):
     model = Transaction
     template_name = 'transactions/transaction_list.html'
     context_object_name = 'transactions'
+    paginate_by = 20
 
     def get_queryset(self):
-        # Source ve destination hesapların account_holder'ını kontrol et
+        account_holder = getattr(self.request.user, 'accountholder', None)
         return Transaction.objects.filter(
-            source_account__account_holder=self.request.user.accountholder
-        ).union(
-            Transaction.objects.filter(
-                destination_account__account_holder=self.request.user.accountholder
-            )
-        )
-
-def get_destination_accounts(request, source_account_id):
-    source_account = get_object_or_404(BankAccount, id=source_account_id)
-    
-    # Aynı para birimine sahip hesapları filtreleyin
-    destination_accounts = BankAccount.objects.filter(
-        account_holder=source_account.account_holder,
-        currency=source_account.currency
-    ).exclude(id=source_account_id).values('id', 'name', 'currency__code')  # Para birimi kodu için __ kullanılır
-
-    return JsonResponse(list(destination_accounts), safe=False)
+            Q(source_account__account_holder=account_holder) |
+            Q(destination_account__account_holder=account_holder)
+        ).select_related(
+            'source_account', 
+            'destination_account',
+            'source_account__currency',
+            'destination_account__currency'
+        ).order_by('-date')
 
 class TransactionDetailView(LoginRequiredMixin, DetailView):
     model = Transaction
@@ -165,33 +181,21 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
     template_name = 'transactions/transaction_form.html'
     success_url = reverse_lazy('transaction_list')
 
-    def get_form(self, form_class=None):
-        form = super(TransactionCreateView, self).get_form(form_class)
-        form.fields['source_account'].queryset = BankAccount.objects.filter(
-            account_holder=self.request.user.accountholder)
-        form.fields['destination_account'].queryset = BankAccount.objects.none()  # Başlangıçta boş
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
 
-        return form
-
+    @db_transaction.atomic
     def form_valid(self, form):
-        source_account = form.cleaned_data['source_account']
-        form.instance.source_account = source_account
-        form.instance.transaction_type = form.cleaned_data['transaction_type']
-        form.instance.description = form.cleaned_data['description']
-        form.instance.amount = form.cleaned_data['amount']
-        form.instance.date = form.cleaned_data['date']
-
-        if form.cleaned_data['transaction_type'] == 'transfer':
-            # Aynı para birimine sahip hesapları filtrele
-            form.fields['destination_account'].queryset = BankAccount.objects.filter(
-                account_holder=self.request.user.accountholder,
-                currency=source_account.currency
-            )
-            form.instance.destination_account = form.cleaned_data['destination_account']
-
-        return super().form_valid(form)
-
-
+        try:
+            form.instance.created_by = self.request.user
+            response = super().form_valid(form)
+            messages.success(self.request, "İşlem başarıyla oluşturuldu")
+            return response
+        except Exception as e:
+            form.add_error(None, str(e))
+            return self.form_invalid(form)
 
 class TransactionUpdateView(LoginRequiredMixin, UpdateView):
     model = Transaction
@@ -202,53 +206,29 @@ class TransactionUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_object(self):
         uid = self.kwargs.get('transaction_uid')
-        return get_object_or_404(Transaction, uid=uid, source_account__account_holder=self.request.user.accountholder)
+        return get_object_or_404(
+            Transaction,
+            uid=uid,
+            source_account__account_holder=getattr(self.request.user, 'accountholder', None)
+        )
 
+    @db_transaction.atomic
     def form_valid(self, form):
-        # Eski işlem bilgilerini al
-        transaction = form.save(commit=False)
-
-        # İşlem türüne göre bakiyeleri geri al
-        if transaction.transaction_type == 'deposit':
-            transaction.source_account.current_balance -= transaction.amount
-        elif transaction.transaction_type == 'withdraw':
-            transaction.source_account.current_balance += transaction.amount
-        elif transaction.transaction_type == 'transfer':
-            transaction.source_account.current_balance += transaction.amount
-            if transaction.destination_account:
-                transaction.destination_account.current_balance -= transaction.amount
-
-        # Yeni işlem bilgileriyle güncelle
-        transaction.source_account = form.cleaned_data['source_account']
-        transaction.transaction_type = form.cleaned_data['transaction_type']
-        transaction.description = form.cleaned_data['description']
-        transaction.amount = form.cleaned_data['amount']
-        transaction.date = form.cleaned_data['date']
-
-        # Eğer transferse, destination_account'u da güncelle
-        if transaction.transaction_type == 'transfer':
-            transaction.destination_account = form.cleaned_data['destination_account']
-
-        # Yeni bakiyeleri hesapla
-        if transaction.transaction_type == 'deposit':
-            transaction.source_account.current_balance += transaction.amount
-        elif transaction.transaction_type == 'withdraw':
-            transaction.source_account.current_balance -= transaction.amount
-        elif transaction.transaction_type == 'transfer':
-            if transaction.destination_account:
-                transaction.destination_account.current_balance += transaction.amount
-
-        # Hesap bakiyelerini kaydet
-        transaction.source_account.save()
-        if transaction.transaction_type == 'transfer' and transaction.destination_account:
-            transaction.destination_account.save()
-
-        # İşlemi kaydet
-        transaction.save()
-
-        return super().form_valid(form)
-
-
+        try:
+            old_transaction = Transaction.objects.get(pk=self.object.pk)
+            old_transaction.reverse_transaction()  # Models.py'de reverse işlemi için metod eklenmeli
+            
+            new_transaction = form.save(commit=False)
+            new_transaction.pk = None  # Yeni bir transaction oluştur
+            new_transaction.save()
+            
+            self.object = new_transaction
+            messages.success(self.request, "İşlem başarıyla güncellendi")
+            return HttpResponseRedirect(self.get_success_url())
+            
+        except Exception as e:
+            messages.error(self.request, f"Güncelleme hatası: {str(e)}")
+            return self.form_invalid(form)
 
 class TransactionDeleteView(LoginRequiredMixin, DeleteView):
     model = Transaction
@@ -256,34 +236,26 @@ class TransactionDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy('transaction_list')
     pk_url_kwarg = 'transaction_uid'
 
+    @db_transaction.atomic
+    def post(self, request, *args, **kwargs):
+        transaction = self.get_object()
+        try:
+            transaction.reverse_transaction()
+            transaction.delete()
+            messages.success(request, "İşlem başarıyla silindi")
+        except Exception as e:
+            messages.error(request, f"Silme hatası: {str(e)}")
+            return redirect(transaction.get_absolute_url())
+            
+        return HttpResponseRedirect(self.success_url)
+
     def get_object(self):
         uid = self.kwargs.get('transaction_uid')
-        return get_object_or_404(Transaction, uid=uid, source_account__account_holder=self.request.user.accountholder)
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-
-        # Get the source account of the transaction
-        source_account = self.object.source_account
-
-        # Update current_balance of the source account
-        if self.object.transaction_type == 'deposit':
-            source_account.current_balance -= self.object.amount
-        elif self.object.transaction_type == 'withdraw':
-            source_account.current_balance += self.object.amount
-        elif self.object.transaction_type == 'transfer':
-            source_account.current_balance += self.object.amount
-
-            # If it's a transfer, also update the destination account's balance
-            if self.object.destination_account:
-                destination_account = self.object.destination_account
-                destination_account.current_balance -= self.object.amount
-                destination_account.save()
-
-        source_account.save()
-
-        # Delete the transaction object
-        self.object.delete()
-
-        return HttpResponseRedirect(self.get_success_url())
-
+        user_accountholder = getattr(self.request.user, 'accountholder', None)
+        return get_object_or_404(
+            Transaction,
+            Q(uid=uid) & (
+                Q(source_account__account_holder=user_accountholder) |
+                Q(destination_account__account_holder=user_accountholder)
+            )
+        )

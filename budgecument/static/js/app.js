@@ -1,83 +1,118 @@
-// Modal
-function showModal(uid, modalTextContent, deleteUrl) {
-    var modal = document.getElementById('deleteModal');
-    var modalText = document.getElementById('modalText');
-    var deleteForm = document.getElementById('deleteForm');
-    var deleteUid = document.getElementById('deleteUid');
+'use strict';
 
-    modal.style.display = "block";
-    modalText.textContent = modalTextContent;
-    deleteForm.action = deleteUrl;  // Set the form action URL
-    deleteUid.value = uid;  // Set the value of hidden input to the bank account uid
-}
+// Modal Operations
+(function() {
+    document.addEventListener('DOMContentLoaded', () => {
+        // Event Delegation for Modals
+        document.body.addEventListener('click', function(e) {
+            const trigger = e.target.closest('[data-modal-target]');
+            if (trigger) {
+                const targetId = trigger.dataset.modalTarget;
+                const modal = document.getElementById(targetId);
+                const uid = trigger.dataset.uid;
+                const text = trigger.dataset.modalText;
+                const url = trigger.dataset.deleteUrl;
 
-function closeModal() {
-    var modal = document.getElementById('deleteModal');
-    modal.style.display = "none";
-}
-
-window.onclick = function(event) {
-    var modal = document.getElementById('deleteModal');
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-};
-
-
-
-// For transfer
-document.addEventListener('DOMContentLoaded', function () {
-    var transactionTypeField = document.getElementById('id_transaction_type');
-    var sourceAccountField = document.getElementById('id_source_account');
-    var destinationAccountField = document.getElementById('destination_account_field');
-    var destinationAccountInput = document.getElementById('id_destination_account');
-
-    function updateDestinationAccounts() {
-        var sourceAccountId = sourceAccountField.value;
-
-        if (transactionTypeField.value === 'transfer' && sourceAccountId) {
-            fetch(`/get_destination_accounts/${sourceAccountId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    destinationAccountInput.innerHTML = ''; // Önceki seçenekleri temizle
-                    data.forEach(account => {
-                        var option = document.createElement('option');
-                        option.value = account.id;
-                        option.textContent = `${account.name} - ${account.currency}`;
-                        option.setAttribute('data-currency', account.currency);
-                        destinationAccountInput.appendChild(option);
-                    });
-                    destinationAccountField.style.display = 'block';
-                    destinationAccountInput.disabled = false;
-                });
-        } else {
-            destinationAccountField.style.display = 'none';
-            destinationAccountInput.disabled = true;
-        }
-    }
-
-    transactionTypeField.addEventListener('change', updateDestinationAccounts);
-    sourceAccountField.addEventListener('change', updateDestinationAccounts);
-    updateDestinationAccounts();
-});
-
-
-fetch(`/get_destination_accounts/${sourceAccountId}/`)
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        destinationAccountInput.innerHTML = ''; // Önceki seçenekleri temizle
-        data.forEach(account => {
-            var option = document.createElement('option');
-            option.value = account.id;
-            option.textContent = `${account.name} - ${account.currency__code}`;
-            destinationAccountInput.appendChild(option);
+                if (modal) {
+                    showModal(modal, { uid, text, url });
+                }
+            }
         });
-        destinationAccountField.style.display = 'block';
-        destinationAccountInput.disabled = false;
-    })
-    .catch(error => console.error('There was a problem with the fetch operation:', error));
+
+        // Initialize Select2
+        $('select').select2({
+            theme: 'bootstrap-5',
+            placeholder: "Lütfen seçim yapın",
+            allowClear: true
+        });
+
+        // Initialize dynamic fields
+        updateFieldVisibility();
+        setupEventListeners();
+    });
+
+    function showModal(modalElement, { uid, text, url }) {
+        const form = modalElement.querySelector('form');
+        const textElement = modalElement.querySelector('.modal-text');
+        const uidInput = modalElement.querySelector('[name="uid"]');
+
+        if (form && textElement && uidInput) {
+            textElement.textContent = text;
+            form.action = url;
+            uidInput.value = uid;
+            new bootstrap.Modal(modalElement).show();
+        }
+    }
+
+    // Dynamic Field Management
+    function updateFieldVisibility() {
+        const type = $('#id_transaction_type').val();
+        $('.dynamic-field').removeClass('active');
+        $(`.${type}-fields`).addClass('active');
+    }
+
+    function setupEventListeners() {
+        // Transaction Type Change
+        $('#id_transaction_type').on('change', function() {
+            updateFieldVisibility();
+            resetDependentFields();
+        });
+
+        // Source Account Change (with debounce)
+        $('#id_source_account').on('change', _.debounce(function() {
+            const sourceUid = this.value;
+            const type = $('#id_transaction_type').val();
+            
+            if (type === 'transfer' && sourceUid) {
+                loadDestinationAccounts(sourceUid);
+            }
+        }, 300));
+
+        // Currency Symbol Update
+        $('#id_source_account, #id_destination_account').on('change', function() {
+            updateCurrencySymbol(this.value);
+        });
+    }
+
+    function loadDestinationAccounts(sourceUid) {
+        const urlTemplate = document.getElementById('destination-accounts-url').dataset.url;
+        const url = urlTemplate.replace('00000000-0000-0000-0000-000000000000', sourceUid);
+        const $destination = $('#id_destination_account');
+
+        $.ajax({
+            url: url,
+            method: 'GET',
+            beforeSend: () => {
+                $destination.prop('disabled', true).html('<option value="">Yükleniyor...</option>');
+            },
+            success: (data) => {
+                const options = data.length ? 
+                    data.map(acc => `<option value="${acc.uid}" data-currency="${acc.currency__code}">${acc.name} (${acc.currency__code})</option>`) : 
+                    ['<option value="">Uygun hesap bulunamadı</option>'];
+                
+                $destination.html(options.join('')).prop('disabled', false);
+            },
+            error: () => {
+                $destination.html('<option value="">Hata oluştu</option>').prop('disabled', true);
+            }
+        });
+    }
+
+    function updateCurrencySymbol(accountId) {
+        if (accountId) {
+            const account = document.querySelector(`option[value="${accountId}"]`);
+            if (account) {
+                const currency = account.dataset.currency;
+                document.querySelectorAll('.currency-symbol').forEach(el => {
+                    el.textContent = currency;
+                });
+            }
+        }
+    }
+
+    function resetDependentFields() {
+        $('#id_destination_account').val(null).trigger('change');
+        $('#id_source_account').val(null).trigger('change');
+        updateCurrencySymbol('');
+    }
+})();

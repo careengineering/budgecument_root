@@ -1,61 +1,80 @@
 {% extends "base.html" %}
-{% block title %}Budgecument - Yeni Hesap İşlemi {% endblock %}
+{% block title %}Budgecument - {% if object %}İşlem Düzenle{% else %}Yeni İşlem{% endif %}{% endblock %}
 {% load crispy_forms_tags %}
 
+
 {% block content %}
-<div class="container col-md-6 bg-light shadow-md p-3 form-layout">
-  <h3>{% if object %}İşlemi Düzenle{% else %}Yeni İşlem{% endif %}</h3>
-  <form method="post" autocomplete="off">
-    {% csrf_token %}
+<div class="container col-md-8 col-lg-6 bg-light shadow-md p-4 my-5">
+    <h3 class="mb-4">{% if object %}İşlemi Düzenle{% else %}Yeni İşlem Oluştur{% endif %}</h3>
+    
+    <form method="post" autocomplete="off" id="transactionForm">
+        {% csrf_token %}
 
-    <!-- Date -->
-    <div class="form-group">
-      {{ form.date.label_tag }}
-      {{ form.date }}
-    </div>
+        <div class="row g-3">
+            <!-- Transaction Type -->
+            <div class="col-12">
+                <div class="form-group">
+                    {{ form.transaction_type.label_tag }}
+                    {{ form.transaction_type }}
+                </div>
+            </div>
 
-    <!-- Transaction Type -->
-    <div class="form-group">
-      {{ form.transaction_type.label_tag }}
-      {{ form.transaction_type }}
-    </div>
+            <!-- Date -->
+            <div class="col-md-6">
+                <div class="form-group">
+                    {{ form.date.label_tag }}
+                    <div class="input-group">
+                        {{ form.date }}
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Source Account -->
-    <div class="form-group">
-      {{ form.source_account.label_tag }}
-      {{ form.source_account }}
-    </div>
+            <!-- Amount -->
+            <div class="col-md-6">
+                <div class="form-group">
+                    {{ form.amount.label_tag }}
+                    <div class="input-group">
+                        <span class="input-group-text currency-symbol">₺</span>
+                        {{ form.amount }}
+                    </div>
+                </div>
+            </div>
 
-    <!-- Destination Account (Initially hidden) -->
-    <div id="destination_account_field" style="display: none;">
-      {{ form.destination_account.label_tag }}
-      <select id="id_destination_account">
-        {% for account in form.destination_account.field.queryset %}
-          <option value="{{ account.id }}" data-currency="{{ account.currency }}" {% if account.id == form.destination_account.value %}selected{% endif %}>
-            {{ account }} - {{ account.currency }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-    <br>
+            <!-- Source Account (Withdraw/Transfer) -->
+            <div class="col-12 withdraw-fields transfer-fields">
+                <div class="form-group">
+                    {{ form.source_account.label_tag }}
+                    {{ form.source_account }}
+                </div>
+            </div>
 
-    <!-- Description -->
-    <div class="form-group">
-      {{ form.description.label_tag }}
-      {{ form.description }}
-    </div>
+            <!-- Destination Account (Deposit/Transfer) -->
+            <div class="col-12 deposit-fields transfer-fields">
+                <div class="form-group">
+                    {{ form.destination_account.label_tag }}
+                    {{ form.destination_account }}
+                </div>
+            </div>
 
-    <!-- Amount -->
-    <div class="form-group">
-      {{ form.amount.label_tag }}
-      {{ form.amount }}
-    </div>
+            <!-- Description -->
+            <div class="col-12">
+                <div class="form-group">
+                    {{ form.description.label_tag }}
+                    {{ form.description }}
+                </div>
+            </div>
 
-    <button type="submit" class="btn btn-success w-40 btn-block p-2">Kaydet &nbsp;
-      <i class="fa fa-floppy-o" aria-hidden="true"></i></button>
-    <a href="{% url 'transaction_list' %}" class="btn btn-secondary w-40 btn-block p-2">Geri Dön &nbsp;
-      <i class="fa fa-arrow-circle-left" aria-hidden="true"></i></a>
-  </form>
+            <!-- Buttons -->
+            <div class="col-12 d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-success flex-grow-1">
+                    <i class="fas fa-save me-2"></i>Kaydet
+                </button>
+                <a href="{% url 'transaction_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Geri Dön
+                </a>
+            </div>
+        </div>
+    </form>
 </div>
-
 {% endblock %}
