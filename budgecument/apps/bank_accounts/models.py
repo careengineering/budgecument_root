@@ -17,7 +17,7 @@ class BankAccount(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.bank} {self.name} - {self.currency.code} (Bakiye: {self.current_balance} {self.currency.symbol})"
+        return f"{self.name} ({self.currency.code})"
 
     def delete(self, *args, **kwargs):
         if self.current_balance != 0:

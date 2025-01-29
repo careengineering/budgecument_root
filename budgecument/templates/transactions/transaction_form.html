@@ -2,79 +2,103 @@
 {% block title %}Budgecument - {% if object %}İşlem Düzenle{% else %}Yeni İşlem{% endif %}{% endblock %}
 {% load crispy_forms_tags %}
 
-
 {% block content %}
-<div class="container col-md-8 col-lg-6 bg-light shadow-md p-4 my-5">
-    <h3 class="mb-4">{% if object %}İşlemi Düzenle{% else %}Yeni İşlem Oluştur{% endif %}</h3>
-    
-    <form method="post" autocomplete="off" id="transactionForm">
-        {% csrf_token %}
+<div class="container col-md-8 col-lg-6">
+    <div class="transaction-form bg-light shadow-md p-4 my-5">
+        <h3 class="mb-4">{% if object %}İşlemi Düzenle{% else %}Yeni İşlem Oluştur{% endif %}</h3>
+        
+        <form method="post" autocomplete="off" id="transactionForm">
+            {% csrf_token %}
 
-        <div class="row g-3">
-            <!-- Transaction Type -->
-            <div class="col-12">
-                <div class="form-group">
-                    {{ form.transaction_type.label_tag }}
-                    {{ form.transaction_type }}
-                </div>
-            </div>
-
-            <!-- Date -->
-            <div class="col-md-6">
-                <div class="form-group">
-                    {{ form.date.label_tag }}
-                    <div class="input-group">
-                        {{ form.date }}
-                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+            <div class="row g-3">
+                <!-- Transaction Type -->
+                <div class="col-12">
+                    <div class="form-group">
+                        {{ form.transaction_type.label_tag }}
+                        {{ form.transaction_type }}
                     </div>
                 </div>
-            </div>
 
-            <!-- Amount -->
-            <div class="col-md-6">
-                <div class="form-group">
-                    {{ form.amount.label_tag }}
-                    <div class="input-group">
-                        <span class="input-group-text currency-symbol">₺</span>
-                        {{ form.amount }}
+                <!-- Date -->
+                <div class="col-md-6">
+                    <div class="form-group">
+                        {{ form.date.label_tag }}
+                        <div class="input-group">
+                            {{ form.date }}
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Source Account (Withdraw/Transfer) -->
-            <div class="col-12 withdraw-fields transfer-fields">
-                <div class="form-group">
-                    {{ form.source_account.label_tag }}
-                    {{ form.source_account }}
+                <!-- Amount -->
+                <div class="col-md-6">
+                    <div class="form-group">
+                        {{ form.amount.label_tag }}
+                        <div class="input-group">
+                            <span class="input-group-text currency-symbol">₺</span>
+                            {{ form.amount }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Source Account (Withdraw/Transfer) -->
+                <div class="col-12 dynamic-field withdraw-fields transfer-fields">
+                    <div class="form-group">
+                        {{ form.source_account.label_tag }}
+                        <select class="form-select select2" name="source_account" id="id_source_account">
+                            {% for account in form.source_account.field.queryset %}
+                                <option value="{{ account.uid }}" 
+                                        data-currency="{{ account.currency.code }}"
+                                        {% if form.source_account.value == account.uid %}selected{% endif %}>
+                                    {{ account.name }} ({{ account.currency.code }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Destination Account (Deposit/Transfer) -->
+                <div class="col-12 dynamic-field deposit-fields transfer-fields">
+                    <div class="form-group">
+                        {{ form.destination_account.label_tag }}
+                        <select class="form-select select2" name="destination_account" id="id_destination_account">
+                            {% if form.destination_account.value %}
+                                {% for account in form.destination_account.field.queryset %}
+                                    <option value="{{ account.uid }}" 
+                                            data-currency="{{ account.currency.code }}"
+                                            {% if form.destination_account.value == account.uid %}selected{% endif %}>
+                                        {{ account.name }} ({{ account.currency.code }})
+                                    </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="col-12">
+                    <div class="form-group">
+                        {{ form.description.label_tag }}
+                        {{ form.description }}
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="col-12 d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success flex-grow-1">
+                        <i class="fas fa-save me-2"></i>Kaydet
+                    </button>
+                    <a href="{% url 'transaction_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Geri Dön
+                    </a>
                 </div>
             </div>
-
-            <!-- Destination Account (Deposit/Transfer) -->
-            <div class="col-12 deposit-fields transfer-fields">
-                <div class="form-group">
-                    {{ form.destination_account.label_tag }}
-                    {{ form.destination_account }}
-                </div>
-            </div>
-
-            <!-- Description -->
-            <div class="col-12">
-                <div class="form-group">
-                    {{ form.description.label_tag }}
-                    {{ form.description }}
-                </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="col-12 d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-success flex-grow-1">
-                    <i class="fas fa-save me-2"></i>Kaydet
-                </button>
-                <a href="{% url 'transaction_list' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Geri Dön
-                </a>
-            </div>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
+
+<!-- AJAX URL Template -->
+<div id="destination-accounts-url" 
+     data-url="{% url 'get_destination_accounts' '00000000-0000-0000-0000-000000000000' %}"
+     hidden></div>
 {% endblock %}
