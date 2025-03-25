@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Q
+from django.forms import Select
 from .models import BankAccount, Transaction
 
 class BankAccountForm(forms.ModelForm):
@@ -40,11 +41,17 @@ class TransactionForm(forms.ModelForm):
             'date': 'Tarih',
         }
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'transaction_type': forms.Select(attrs={'class': 'form-control', 'style': 'min-width: 200px;'}),
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
+        if 'initial' not in kwargs:
+            kwargs['initial'] = {}
+        # Varsayılan işlem türü 'deposit' (Gelen) olsun.
+        kwargs['initial'].setdefault('transaction_type', 'deposit')
+        
         super().__init__(*args, **kwargs)
         
         # Aktif hesapları filtrele
@@ -52,24 +59,34 @@ class TransactionForm(forms.ModelForm):
         if self.user and hasattr(self.user, 'accountholder'):
             active_accounts = active_accounts.filter(account_holder=self.user.accountholder)
 
-        # Dinamik queryset'ler
         self.fields['source_account'].queryset = active_accounts
         self.fields['destination_account'].queryset = active_accounts
 
-        # İlk yüklemede alanları gizle
+        # İlk yüklemede alanları dinamik olarak ayarla
         self.adjust_fields_based_on_type()
 
     def adjust_fields_based_on_type(self):
-        """İşlem türüne göre alanları dinamik olarak ayarla"""
-        transaction_type = self.data.get('transaction_type') or self.instance.transaction_type
+        # İşlem türü; POST verisi, initial ya da instance üzerinden alınır.
+        transaction_type = (
+            self.data.get('transaction_type') or 
+            self.initial.get('transaction_type') or 
+            (self.instance.transaction_type if self.instance and self.instance.pk else None)
+        )
         
         if transaction_type == 'deposit':
-            self.fields.pop('source_account')
+            # Deposit: Kaynak hesap gizlenecek, hedef hesap normal görünsün.
+            self.fields['source_account'].widget = forms.HiddenInput()
+            self.fields['destination_account'].widget = forms.Select(attrs={'class': 'form-control'})
             self.fields['destination_account'].required = True
         elif transaction_type == 'withdraw':
-            self.fields.pop('destination_account')
+            # Withdraw: Hedef hesap gizlenecek, kaynak hesap normal görünsün.
+            self.fields['destination_account'].widget = forms.HiddenInput()
+            self.fields['source_account'].widget = forms.Select(attrs={'class': 'form-control'})
             self.fields['source_account'].required = True
         elif transaction_type == 'transfer':
+            # Transfer: Her iki alan da normal
+            self.fields['source_account'].widget = forms.Select(attrs={'class': 'form-control'})
+            self.fields['destination_account'].widget = forms.Select(attrs={'class': 'form-control'})
             self.fields['source_account'].required = True
             self.fields['destination_account'].required = True
 
@@ -80,20 +97,20 @@ class TransactionForm(forms.ModelForm):
         source = cleaned_data.get('source_account')
         destination = cleaned_data.get('destination_account')
 
-        # Para birimi kontrolleri
+        # Para birimi kontrolleri (transfer için)
         if transaction_type == 'transfer' and source and destination:
             if source.currency != destination.currency:
                 self.add_error('destination_account', "Hesaplar farklı para birimlerine sahip")
-
-        # Bakiye kontrolleri
+                
+        # Bakiye kontrolleri (withdraw ve transfer için)
         if transaction_type in ['withdraw', 'transfer'] and source:
             if source.current_balance < amount:
                 self.add_error('amount', "Yetersiz bakiye")
-
-        # Hesap çakışması önleme
+                
+        # Transfer için aynı hesaba gönderme kontrolü
         if transaction_type == 'transfer' and source == destination:
             self.add_error('destination_account', "Aynı hesaba transfer yapılamaz")
-
+            
         return cleaned_data
 
     def clean_amount(self):

@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db import transaction as db_transaction
+from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -94,6 +95,11 @@ class BankAccountCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.account_holder = self.request.user.accountholder
         return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        print(form.errors)  # Form hatalarını gör
+        return super().form_invalid(form)
+
 
 
 class BankAccountUpdateView(LoginRequiredMixin, UpdateView):
@@ -188,16 +194,12 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
         kwargs['user'] = self.request.user
         return kwargs
 
-    @db_transaction.atomic
     def form_valid(self, form):
-        try:
-            form.instance.created_by = self.request.user
-            response = super().form_valid(form)
-            messages.success(self.request, "İşlem başarıyla oluşturuldu")
-            return response
-        except Exception as e:
-            form.add_error(None, str(e))
-            return self.form_invalid(form)
+        form.instance.created_by = self.request.user  # İşlemi yapanı kaydet
+        response = super().form_valid(form)
+        messages.success(self.request, "İşlem başarıyla oluşturuldu")
+        return response
+
 
 class TransactionUpdateView(LoginRequiredMixin, UpdateView):
     model = Transaction

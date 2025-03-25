@@ -62,6 +62,8 @@
         $('#id_source_account').on('change', _.debounce(function() {
             const sourceUid = this.value;
             const type = $('#id_transaction_type').val();
+
+            console.log("Seçilen kaynak hesap:", sourceUid);  // Log ekleyerek kontrol et
             
             if (type === 'transfer' && sourceUid) {
                 loadDestinationAccounts(sourceUid);
@@ -79,6 +81,8 @@
         const url = urlTemplate.replace('00000000-0000-0000-0000-000000000000', sourceUid);
         const $destination = $('#id_destination_account');
 
+        console.log("İstek URL:", url);  // URL'nin doğru oluştuğunu kontrol et
+
         $.ajax({
             url: url,
             method: 'GET',
@@ -91,9 +95,11 @@
                     ['<option value="">Uygun hesap bulunamadı</option>'];
                 
                 $destination.html(options.join('')).prop('disabled', false);
+                console.log("Gelen hesaplar:", data);
             },
-            error: () => {
+            error: (xhr, status, error) => {
                 $destination.html('<option value="">Hata oluştu</option>').prop('disabled', true);
+                console.error("Hata:", xhr.responseText); // Hata mesajını gör
             }
         });
     }
@@ -111,6 +117,7 @@
     }
 
     function resetDependentFields() {
+        // Sadece alanları sıfırlamak için:
         $('#id_destination_account').val(null).trigger('change');
         $('#id_source_account').val(null).trigger('change');
         updateCurrencySymbol('');
